@@ -1,0 +1,52 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/game_manager.gd" id="1_gm"]
+[ext_resource type="Script" path="res://scripts/world/world_map.gd" id="2_map"]
+[ext_resource type="Script" path="res://scripts/game/projectiles.gd" id="3_proj"]
+[ext_resource type="Script" path="res://scripts/game/effects.gd" id="4_fx"]
+[ext_resource type="Script" path="res://scripts/game/wave_manager.gd" id="5_wave"]
+[ext_resource type="Script" path="res://scripts/game/infection_system.gd" id="6_inf"]
+[ext_resource type="Script" path="res://scripts/game/upgrade_manager.gd" id="7_upg"]
+[ext_resource type="Script" path="res://scripts/game/player_controller.gd" id="8_pc"]
+[ext_resource type="Script" path="res://scripts/ui/ui_manager.gd" id="9_ui"]
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_gm")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(360, 640)
+
+[node name="WorldMap" type="Node2D" parent="."]
+script = ExtResource("2_map")
+
+[node name="GroundEffects" type="Node2D" parent="."]
+script = ExtResource("4_fx")
+layer_z = 0
+
+[node name="Units" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="Projectiles" type="Node2D" parent="."]
+script = ExtResource("3_proj")
+
+[node name="Effects" type="Node2D" parent="."]
+script = ExtResource("4_fx")
+
+[node name="WaveManager" type="Node" parent="."]
+script = ExtResource("5_wave")
+
+[node name="InfectionSystem" type="Node" parent="."]
+script = ExtResource("6_inf")
+
+[node name="UpgradeManager" type="Node" parent="."]
+script = ExtResource("7_upg")
+
+[node name="Controls" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="PlayerController" type="Node2D" parent="Controls"]
+script = ExtResource("8_pc")
+
+[node name="UIManager" type="CanvasLayer" parent="."]
+layer = 10
+script = ExtResource("9_ui")

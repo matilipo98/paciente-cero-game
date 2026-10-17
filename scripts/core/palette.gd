@@ -1,0 +1,79 @@
+class_name Palette
+extends RefCounted
+## Paleta pastel oficial (planilla de gráficos, pestaña PALETA).
+## Todos los colores del juego salen de acá: no hardcodear HEX en otros scripts.
+
+# Zombis
+const ZOMBIE_SKIN := Color("#A8D98A")
+const ZOMBIE_SKIN_LIGHT := Color("#D9F0BF")
+const ZOMBIE_OUTLINE := Color("#86BC75")
+const ZOMBIE_CLOTH := Color("#AE92CA")
+const ZOMBIE_CLOTH_LIGHT := Color("#D9C6F1")
+
+# Civiles
+const HUMAN_SKIN := Color("#F5B7A5")
+const HUMAN_SKIN_LIGHT := Color("#FFD8C8")
+const CLOTH_BLUE := Color("#A9D6F2")
+const CLOTH_YELLOW := Color("#F6D47A")
+const CLOTH_PINK := Color("#F2B1C2")
+const CLOTH_CORAL := Color("#EEAD97")
+const CLOTH_WHITE := Color("#FFF7EE")
+const HUMAN_CLOTHES: Array[Color] = [CLOTH_BLUE, CLOTH_YELLOW, CLOTH_PINK, CLOTH_CORAL, CLOTH_WHITE]
+const HAIR_BROWN := Color("#805E55")
+const HAIR_BLACK := Color("#393B50")
+const HAIR_BLOND := Color("#F6D47A")
+const HUMAN_HAIRS: Array[Color] = [HAIR_BROWN, HAIR_BLACK, HAIR_BLOND, HAIR_BROWN]
+const HUMAN_ALERT := Color("#8FC9EA")
+
+# Policía
+const POLICE := Color("#8EAEE0")
+const POLICE_DARK := Color("#5875A7")
+
+# Ciudad
+const ASPHALT := Color("#A8A9BB")
+const ASPHALT_LIGHT := Color("#C8C8D3")
+const SIDEWALK := Color("#F3E6DD")
+const SIDEWALK_LIGHT := Color("#FFF7EE")
+const CURB := Color("#D3CDD3")
+const LANE := Color("#E9DFE5")
+const CROSSWALK := Color("#F9F5F2")
+const BUILDING_CORAL := Color("#F1C8C6")
+const BUILDING_CORAL_LIGHT := Color("#FCE3E1")
+const BUILDING_BLUE := Color("#BCD7F8")
+const BUILDING_BLUE_LIGHT := Color("#DFEBFC")
+const BUILDING_LILAC := Color("#CFCAF1")
+const BUILDING_LILAC_LIGHT := Color("#E7E3FC")
+const BUILDING_CREAM := Color("#FBE7B1")
+const BUILDING_CREAM_LIGHT := Color("#FFF1D6")
+const TREE := Color("#A8CF9A")
+const TREE_DARK := Color("#84BD86")
+const WOOD := Color("#D6AC8B")
+const PLANTER := Color("#D5A987")
+const CAR_PINK := Color("#F2B1C2")
+const CAR_BLUE := Color("#A9D6F2")
+const CAR_YELLOW := Color("#FFE1AA")
+const LAMP_POLE := Color("#77758E")
+const HYDRANT := Color("#E69E9E")
+const BIN := Color("#62677D")
+const CONE := Color("#EEAD97")
+
+# Interfaz / feedback
+const POSITIVE := Color("#A8D98A")
+const POSITIVE_LIGHT := Color("#E6F5DD")
+const VIOLET := Color("#B9A1E8")
+const VIOLET_LIGHT := Color("#EDE5FB")
+const GOLD := Color("#F6D47A")
+const GOLD_LIGHT := Color("#FFF4D4")
+const DANGER := Color("#E69E9E")
+const DANGER_LIGHT := Color("#FAE9E2")
+const DANGER_DARK := Color("#C9787B")
+const INK := Color("#393B50")
+const INK_SOFT := Color("#62677D")
+const CREAM := Color("#F9F6F2")
+const WHITE := Color("#FFFFFF")
+const SHADOW := Color(0.2235, 0.2314, 0.3137, 0.13)
+const OUTLINE := Color(0.2235, 0.2314, 0.3137, 0.2)
+
+
+static func with_alpha(c: Color, a: float) -> Color:
+	return Color(c.r, c.g, c.b, a)
