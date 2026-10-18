@@ -16,6 +16,8 @@ var upgrade_counts: Dictionary = {}
 ## Progreso por niveles: hasta qué nivel está desbloqueado y la mejor oleada de cada uno.
 var unlocked_level := 1
 var best_wave_by_level: Dictionary = {}
+## Horda que se lleva a cada nivel al ganar el anterior: nivel → {zombies, upgrades}.
+var carry: Dictionary = {}
 
 
 func _ready() -> void:
@@ -39,6 +41,7 @@ func load_data() -> void:
 	tutorial_done = bool(cf.get_value("settings", "tutorial_done", false))
 	unlocked_level = int(cf.get_value("progress", "unlocked_level", 1))
 	best_wave_by_level = cf.get_value("progress", "best_wave_by_level", {})
+	carry = cf.get_value("progress", "carry", {})
 
 
 func save_data() -> void:
@@ -55,15 +58,20 @@ func save_data() -> void:
 	cf.set_value("settings", "tutorial_done", tutorial_done)
 	cf.set_value("progress", "unlocked_level", unlocked_level)
 	cf.set_value("progress", "best_wave_by_level", best_wave_by_level)
+	cf.set_value("progress", "carry", carry)
 	cf.save(PATH)
 
 
 ## Registra una partida terminada. Devuelve true si hubo nuevo récord de puntaje.
-func submit_run(score: int, wave: int, infected: int, victory: bool, horde: int = 0, level: int = 1) -> bool:
+## Al ganar, `carry_data` ({zombies, upgrades}) queda guardado como punto de partida del nivel siguiente.
+func submit_run(score: int, wave: int, infected: int, victory: bool, horde: int = 0, level: int = 1,
+		carry_data: Dictionary = {}) -> bool:
 	var record := score > best_score
 	best_wave_by_level[level] = maxi(int(best_wave_by_level.get(level, 0)), wave)
 	if victory:
 		unlocked_level = maxi(unlocked_level, level + 1)
+		if not carry_data.is_empty():
+			carry[level + 1] = carry_data
 	best_score = maxi(best_score, score)
 	best_wave = maxi(best_wave, wave)
 	best_horde = maxi(best_horde, horde)
@@ -73,6 +81,13 @@ func submit_run(score: int, wave: int, infected: int, victory: bool, horde: int 
 		victories += 1
 	save_data()
 	return record
+
+
+## Horda guardada para arrancar `level` ({} si arranca con 1 zombi).
+func carry_for(level: int) -> Dictionary:
+	if level <= 1:
+		return {}
+	return carry.get(level, {})
 
 
 func best_wave_in(level: int) -> int:
@@ -112,6 +127,7 @@ func reset_records() -> void:
 	tutorial_done = false
 	unlocked_level = 1
 	best_wave_by_level = {}
+	carry = {}
 	save_data()
 
 

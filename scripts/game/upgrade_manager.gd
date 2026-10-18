@@ -1,6 +1,7 @@
 class_name UpgradeManager
 extends Node
 ## Mejoras acumulables por partida (se eligen 1 de 3 al terminar cada oleada).
+## Al pasar de nivel se conservan junto con la horda.
 
 const DEFS: Array[Dictionary] = [
 	{"id": "speed", "title": "VELOCIDAD", "desc": "Tus zombis se mueven un 10% más rápido."},
@@ -10,6 +11,9 @@ const DEFS: Array[Dictionary] = [
 	{"id": "fury", "title": "FURIA", "desc": "Derrotan policías un 30% más rápido."},
 	{"id": "instinct", "title": "INSTINTO", "desc": "Los aliados detectan humanos más lejos."},
 ]
+
+## Nivel máximo de cada mejora (HORDA no tiene tope: siempre suma aliados).
+const MAX_LEVEL := 5
 
 var levels: Dictionary = {}
 var speed_mult := 1.0
@@ -33,12 +37,27 @@ func reset() -> void:
 	_recalc()
 
 
+## Carga mejoras traídas del nivel anterior (no cuentan como elegidas de nuevo).
+func load_levels(d: Dictionary) -> void:
+	for id in d:
+		if levels.has(id):
+			levels[id] = int(d[id]) if id == "horde" else mini(int(d[id]), MAX_LEVEL)
+	_recalc()
+
+
 func level(id: String) -> int:
 	return int(levels.get(id, 0))
 
 
+func is_maxed(id: String) -> bool:
+	return id != "horde" and level(id) >= MAX_LEVEL
+
+
 func roll_choices(n: int = 3) -> Array[Dictionary]:
-	var pool := DEFS.duplicate()
+	var pool: Array[Dictionary] = []
+	for d in DEFS:
+		if not is_maxed(d.id):
+			pool.append(d)
 	pool.shuffle()
 	var out: Array[Dictionary] = []
 	for i in mini(n, pool.size()):
@@ -47,7 +66,10 @@ func roll_choices(n: int = 3) -> Array[Dictionary]:
 
 
 func apply(id: String, gm) -> void:
-	levels[id] = level(id) + 1
+	if id != "horde":
+		levels[id] = mini(level(id) + 1, MAX_LEVEL)
+	else:
+		levels[id] = level(id) + 1
 	_recalc()
 	if id == "horde":
 		gm.spawn_bonus_allies(2)

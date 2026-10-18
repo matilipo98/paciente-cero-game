@@ -45,6 +45,29 @@ const POLICE_PREFERRED_DIST := 200.0
 const POLICE_FIRE_INTERVAL := 1.25
 const BULLET_SPEED := 340.0
 
+## Contagio de enemigos armados: si al caer lo rodean al menos esta cantidad de zombis,
+## se suma a la horda en vez de desaparecer. El tanque no se contagia.
+const INFECT_NEED_POLICE := 5
+const INFECT_NEED_SOLDIER := 10
+const INFECT_NEED_SURVIVOR := 5
+const INFECT_NEED_BIKER := 5
+## Distancia (además del radio del enemigo) a la que un zombi cuenta como "rodeándolo".
+const SURROUND_EXTRA := 62.0
+
+
+static func infect_need(kind: int) -> int:
+	match kind:
+		ActorArt.Kind.POLICE:
+			return INFECT_NEED_POLICE
+		ActorArt.Kind.SOLDIER:
+			return INFECT_NEED_SOLDIER
+		ActorArt.Kind.SURVIVOR:
+			return INFECT_NEED_SURVIVOR
+		ActorArt.Kind.BIKER:
+			return INFECT_NEED_BIKER
+	return 0
+
+
 # --- Soldados (nivel 3) -----------------------------------------------------------
 const SOLDIER_RADIUS := 21.0
 const SOLDIER_SPEED := 108.0
@@ -87,12 +110,12 @@ const TANK_SPEED := 52.0
 const TANK_TOUGHNESS := 36.0
 const TANK_MIN_ATTACKERS := 5
 const TANK_MAX_ATTACKERS := 14
-const TANK_FIRE_INTERVAL := 3.3
+const TANK_FIRE_INTERVAL := 4.0
 const TANK_RANGE := 430.0
 ## Más cerca que esto el cañón no puede apuntar: rodearlo es la forma de ganarle.
 const TANK_MIN_RANGE := 105.0
 const SHELL_FLIGHT := 1.1
-const SHELL_BLAST := 72.0
+const SHELL_BLAST := 64.0
 const SHELL_DMG := 2
 const TANK_BONUS_ALLIES := 6
 
@@ -126,13 +149,15 @@ const WAVES: Array[Dictionary] = [
 	{"humans": 12, "police": 1, "speed": 0.92, "fear": 0.85, "duration": 35.0, "p_tough": 1.00, "p_fire": 1.00, "p_aim": 0.00, "p_speed": 1.00, "p_squad": 1, "p_dmg": 1},
 	{"humans": 15, "police": 2, "speed": 1.00, "fear": 0.95, "duration": 35.0, "p_tough": 1.15, "p_fire": 0.95, "p_aim": 0.20, "p_speed": 1.05, "p_squad": 2, "p_dmg": 1},
 	{"humans": 18, "police": 3, "speed": 1.02, "fear": 1.00, "duration": 36.0, "p_tough": 1.40, "p_fire": 0.88, "p_aim": 0.35, "p_speed": 1.10, "p_squad": 2, "p_dmg": 1},
-	{"humans": 20, "police": 6, "speed": 1.05, "fear": 1.05, "duration": 37.0, "p_tough": 1.80, "p_fire": 0.80, "p_aim": 0.50, "p_speed": 1.15, "p_squad": 2, "p_dmg": 2},
-	{"humans": 22, "police": 7, "speed": 1.08, "fear": 1.05, "duration": 38.0, "p_tough": 2.40, "p_fire": 0.72, "p_aim": 0.60, "p_speed": 1.20, "p_squad": 3, "p_dmg": 2},
-	{"humans": 24, "police": 8, "speed": 1.10, "fear": 1.10, "duration": 39.0, "p_tough": 3.00, "p_fire": 0.64, "p_aim": 0.70, "p_speed": 1.25, "p_squad": 3, "p_dmg": 2},
-	{"humans": 26, "police": 10, "speed": 1.12, "fear": 1.10, "duration": 40.0, "p_tough": 3.60, "p_fire": 0.56, "p_aim": 0.80, "p_speed": 1.30, "p_squad": 3, "p_dmg": 2},
-	{"humans": 28, "police": 12, "speed": 1.14, "fear": 1.15, "duration": 42.0, "p_tough": 4.20, "p_fire": 0.50, "p_aim": 0.90, "p_speed": 1.35, "p_squad": 4, "p_dmg": 2},
-	{"humans": 32, "police": 15, "speed": 1.16, "fear": 1.15, "duration": 45.0, "p_tough": 5.00, "p_fire": 0.44, "p_aim": 1.00, "p_speed": 1.40, "p_squad": 4, "p_dmg": 2},
+	{"humans": 20, "police": 6, "speed": 1.05, "fear": 1.05, "duration": 37.0, "p_tough": 1.70, "p_fire": 0.82, "p_aim": 0.45, "p_speed": 1.15, "p_squad": 2, "p_dmg": 1},
+	{"humans": 22, "police": 7, "speed": 1.08, "fear": 1.05, "duration": 38.0, "p_tough": 2.20, "p_fire": 0.74, "p_aim": 0.55, "p_speed": 1.20, "p_squad": 3, "p_dmg": 1},
+	{"humans": 24, "police": 8, "speed": 1.10, "fear": 1.10, "duration": 39.0, "p_tough": 2.60, "p_fire": 0.66, "p_aim": 0.70, "p_speed": 1.25, "p_squad": 3, "p_dmg": 2},
+	{"humans": 26, "police": 9, "speed": 1.12, "fear": 1.10, "duration": 40.0, "p_tough": 3.00, "p_fire": 0.62, "p_aim": 0.80, "p_speed": 1.30, "p_squad": 3, "p_dmg": 2},
+	{"humans": 28, "police": 10, "speed": 1.14, "fear": 1.15, "duration": 42.0, "p_tough": 3.40, "p_fire": 0.58, "p_aim": 0.90, "p_speed": 1.35, "p_squad": 4, "p_dmg": 2},
+	{"humans": 32, "police": 12, "speed": 1.16, "fear": 1.15, "duration": 45.0, "p_tough": 3.80, "p_fire": 0.54, "p_aim": 1.00, "p_speed": 1.40, "p_squad": 4, "p_dmg": 2},
 ]
+## Enemigos armados extra según el tamaño de la horda (0.4 = +40 % con 100 zombis).
+const HORDE_THREAT := 0.4
 ## Porcentaje de humanos que aparece apenas empieza la oleada (acción inmediata).
 const WAVE_INITIAL_FRACTION := 0.4
 ## Fracción de la duración en la que termina de aparecer el resto.

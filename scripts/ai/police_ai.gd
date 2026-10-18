@@ -141,7 +141,7 @@ static func _update_biker(p: Unit, gm, cfg: Dictionary, delta: float) -> void:
 	p.fire_cd -= delta
 	var push: Vector2 = gm.map.bounds_push(p.position, 110.0) * 1.6
 	if t == null or not is_instance_valid(t) or t.state != Unit.State.ACTIVE:
-		var c: Vector2 = Balance.PLAY_RECT.get_center()
+		var c: Vector2 = gm.map.bounds.get_center()
 		p.desired = ((c - p.position).normalized().orthogonal() * p.avoid_side + push).normalized() * spd * 0.7
 		return
 	var to := t.position - p.position

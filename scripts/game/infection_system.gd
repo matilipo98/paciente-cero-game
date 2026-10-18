@@ -1,7 +1,8 @@
 class_name InfectionSystem
 extends Node
 ## Mecánica central: contactos zombi ↔ humano (mordida automática breve y
-## transformación) y zombi ↔ policía (ataque automático por contacto).
+## transformación) y zombi ↔ enemigo armado (ataque automático por contacto).
+## Si al caer un enemigo lo rodean suficientes zombis (Balance.infect_need), se contagia.
 
 var gm  # GameManager
 var _buf: Array = []
@@ -62,16 +63,23 @@ func _process_police(delta: float) -> void:
 		if p.state != Unit.State.ACTIVE:
 			continue
 		var tank := p.kind == ActorArt.Kind.TANK
-		gm.zombie_grid.query(p.position, p.radius + 36.0, _buf)
+		var around_r := p.radius + Balance.SURROUND_EXTRA
+		gm.zombie_grid.query(p.position, maxf(p.radius + 36.0, around_r), _buf)
 		var attackers := 0
+		var around := 0
 		for c in _buf:
 			var z: Unit = c
 			if z.state != Unit.State.ACTIVE:
 				continue
+			var d2 := p.position.distance_squared_to(z.position)
+			if d2 <= around_r * around_r:
+				around += 1
 			var reach: float = p.radius + z.radius + (12.0 if tank else 7.0)
-			if p.position.distance_squared_to(z.position) <= reach * reach:
+			if d2 <= reach * reach:
 				attackers += 1
 				z.facing = (p.position - z.position).normalized()
+		if not tank:
+			p.attackers = around if attackers > 0 else 0
 		if tank:
 			# El tanque sólo cede si lo muerden varios a la vez.
 			p.tank_attackers = attackers

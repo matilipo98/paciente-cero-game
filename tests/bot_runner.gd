@@ -21,6 +21,20 @@ var _end_frames := 0
 func _ready() -> void:
 	var lv_env := OS.get_environment("LEVEL")
 	GameManager.selected_level = int(lv_env) if lv_env != "" else 1
+	# CARRY=n simula llegar al nivel con una horda de n zombis y mejoras al azar.
+	var lvl := GameManager.selected_level
+	SaveManager.carry.erase(lvl)
+	if OS.get_environment("CARRY") != "":
+		# Una mejora por oleada superada en los niveles anteriores (con el tope de cada una).
+		var ups := {}
+		var earned := 0
+		for l in range(1, lvl):
+			earned += Levels.waves(l).size() - 1
+		for i in earned:
+			var id: String = UpgradeManager.DEFS[randi() % UpgradeManager.DEFS.size()].id
+			ups[id] = mini(int(ups.get(id, 0)) + 1, UpgradeManager.MAX_LEVEL) if id != "horde" else int(ups.get(id, 0)) + 1
+		SaveManager.carry[lvl] = {"zombies": int(OS.get_environment("CARRY")), "upgrades": ups}
+		print("[bot] carry ", SaveManager.carry[lvl])
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	game = GAME.instantiate()
 	add_child(game)
@@ -99,7 +113,7 @@ func _finish() -> void:
 	var kinds := {}
 	for k in game.defeated_by_kind:
 		kinds[ActorArt.Kind.keys()[k]] = game.defeated_by_kind[k]
-	print("[bot] defeated_by_kind=%s" % [kinds])
+	print("[bot] defeated_by_kind=%s armed_infected=%d" % [kinds, game.armed_infected])
 	print("[bot] upgrades=%s" % [upgrades_taken])
 	print("[bot] simulated=%.1fs real=%.1fs avg_bot_frame=%.3fms" % [frames / 60.0, real, phys_usec / 1000.0 / maxf(1, phys_frames)])
 	if game.ui._overlay != null:

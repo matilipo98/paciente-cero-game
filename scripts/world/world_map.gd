@@ -168,11 +168,15 @@ func _layout_station() -> void:
 	_image = load("res://assets/maps/station.jpg")
 	_image_rect = Rect2(0, 0, 720, 1280)
 	_fill = Color8(135, 150, 183)
-	player_start = Vector2(360, 640)
+	player_start = Vector2(360, 600)
+	# Zona jugable: el estacionamiento y la calle de arriba. Las veredas de los costados
+	# y el edificio de abajo quedan afuera (ningún actor puede pasar).
+	bounds = Rect2(22, 130, 676, 870)
+	# Entran por la calle de arriba, por los costados y salen por la puerta de la comisaría.
 	spawn_points = [
-		Vector2(360, 150), Vector2(30, 180), Vector2(695, 185),
-		Vector2(30, 600), Vector2(30, 820), Vector2(692, 560), Vector2(692, 900),
-		Vector2(360, 1250), Vector2(230, 1150), Vector2(500, 1150),
+		Vector2(300, 150), Vector2(420, 150), Vector2(70, 152), Vector2(680, 175),
+		Vector2(40, 600), Vector2(40, 820), Vector2(680, 560), Vector2(680, 860),
+		Vector2(360, 980), Vector2(250, 975), Vector2(470, 975),
 	]
 	# Árboles, canteros y veredas con plantas
 	for c in [Vector3(22, 205, 38), Vector3(668, 262, 42), Vector3(35, 935, 40), Vector3(682, 935, 40),

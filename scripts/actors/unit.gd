@@ -53,7 +53,8 @@ var sep_cache := Vector2.ZERO
 var turret := Vector2.DOWN
 var recoil := 0.0
 var wrecked := false
-var tank_attackers := 0
+## Zombis alrededor (tanque: mordiéndolo; resto: rodeándolo para contagiarlo).
+var attackers := 0
 
 # --- Aspecto ---
 var cloth := Palette.CLOTH_BLUE
@@ -158,6 +159,12 @@ func become_zombie(hit_points: float) -> void:
 	kind = ActorArt.Kind.ZOMBIE
 	state = State.ACTIVE
 	radius = Balance.ALLY_RADIUS
+	accel = 1500.0
+	aim_dir = Vector2.ZERO
+	burst_left = 0
+	under_attack = 0.0
+	attackers = 0
+	rotation = 0.0
 	_apply_look(ActorAtlas.random_zombie_look())
 	hp = hit_points
 	max_hp = hit_points
@@ -433,6 +440,8 @@ func _draw_status(ground: Vector2) -> void:
 		_draw_tank_status(ground)
 	elif ActorArt.is_armed(kind) and hp < max_hp and state == State.ACTIVE:
 		ActorArt.health_bar(self, ground + Vector2(0, -radius - 12.0), hp / max_hp, 1.0)
+		if attackers > 0:
+			_draw_need_ticks(ground, Balance.infect_need(kind), radius + 24.0, 0.24)
 	elif kind == ActorArt.Kind.ZOMBIE and bar_timer > 0.0 and state == State.ACTIVE:
 		ActorArt.health_bar(self, ground + Vector2(0, -radius - 12.0), hp / max_hp, clampf(bar_timer / 0.4, 0.0, 1.0))
 	if is_leader and state == State.ACTIVE:
@@ -449,11 +458,17 @@ func _draw_tank_status(ground: Vector2) -> void:
 	var p := ground + Vector2(-w * 0.5, -radius - 22.0)
 	draw_rect(Rect2(p - Vector2(2, 2), Vector2(w + 4, 12)), Palette.with_alpha(Palette.INK, 0.75))
 	draw_rect(Rect2(p, Vector2(w * clampf(hp / max_hp, 0.0, 1.0), 8)), Palette.DANGER)
-	var need := Balance.TANK_MIN_ATTACKERS
-	var ok := tank_attackers >= need
+	_draw_need_ticks(ground, Balance.TANK_MIN_ATTACKERS, radius + 30.0, 0.32)
+
+
+## Marcas en arco sobre el enemigo: una por zombi necesario; se pintan de verde con los que hay.
+func _draw_need_ticks(ground: Vector2, need: int, dist: float, gap: float) -> void:
+	if need <= 0:
+		return
+	var ok := attackers >= need
 	for i in need:
-		var a := -PI * 0.5 + (i - (need - 1) * 0.5) * 0.32
-		var c := ground + Vector2.RIGHT.rotated(a) * (radius + 30.0)
-		var col := Palette.ZOMBIE_SKIN if i < tank_attackers else Palette.with_alpha(Palette.WHITE, 0.55)
-		draw_circle(c, 6.0 if ok else 5.0, Palette.with_alpha(Palette.INK, 0.6))
-		draw_circle(c, 4.5 if ok else 3.6, col)
+		var a := -PI * 0.5 + (i - (need - 1) * 0.5) * gap
+		var c := ground + Vector2.RIGHT.rotated(a) * dist
+		var col := Palette.ZOMBIE_SKIN if i < attackers else Palette.with_alpha(Palette.WHITE, 0.55)
+		draw_circle(c, 5.5 if ok else 4.6, Palette.with_alpha(Palette.INK, 0.6))
+		draw_circle(c, 4.0 if ok else 3.2, col)

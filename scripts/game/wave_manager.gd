@@ -46,10 +46,14 @@ func start_wave(n: int) -> void:
 	_spawn_interval = duration * Balance.WAVE_SPAWN_WINDOW / batches
 	_spawn_timer = _spawn_interval * 0.6
 	_arrivals.clear()
+	# Una horda grande atrae más enemigos armados (hasta +40 % con 100 zombis).
+	var boost := 1.0 + clampf((gm.zombies.size() - 25.0) / 75.0, 0.0, 1.0) * Balance.HORDE_THREAT
 	for spec in ARMED_SPAWNS:
 		var count := int(current_cfg.get(spec[0], 0))
 		if count <= 0:
 			continue
+		if spec[0] != "tanks":
+			count = roundi(count * boost)
 		var squad := int(current_cfg.get(spec[1], 1)) if spec[1] != "" else 1
 		var groups := ceili(float(count) / squad)
 		for i in count:

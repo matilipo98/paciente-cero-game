@@ -38,6 +38,7 @@ func _physics_process(_d: float) -> void:
 			if frames == 5:
 				SaveManager.unlocked_level = 4
 				SaveManager.best_wave_by_level = {1: 10, 2: 15, 3: 20, 4: 9}
+				SaveManager.carry = {2: {"zombies": 48, "upgrades": {}}, 3: {"zombies": 71, "upgrades": {}}, 4: {"zombies": 86, "upgrades": {}}}
 				menu._show_levels()
 			if frames == 40: _save()
 		"menu_upgrades":

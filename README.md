@@ -1,7 +1,7 @@
 # PACIENTE CERO
 
 Juego arcade casual para celulares (Android / iOS), en 2D con vista cenital y vertical, hecho en **Godot 4.3+ con GDScript**.
-Arrancás con un solo zombi y contagiás humanos para armar una horda. Hay 5 niveles: **Ciudad** (10 oleadas), **Comisaría** (15), **Campo** (20, con soldados), **Ruinas** (25, supervivientes y motos) y **Desierto** (30, con tanques). Cada nivel arranca de cero y al ganarlo se desbloquea el siguiente.
+Arrancás con un solo zombi y contagiás humanos para armar una horda. Hay 5 niveles: **Ciudad** (10 oleadas), **Comisaría** (15), **Campo** (20, con soldados), **Ruinas** (25, supervivientes y motos) y **Desierto** (30, con tanques). Al ganar un nivel se desbloquea el siguiente y pasás a él con tu horda y tus mejoras.
 
 Los personajes y la ciudad se dibujan con primitivas 2D (`_draw()`, tweens y partículas propias). Los mapas de la comisaría, el campo, las ruinas y el desierto son imágenes (`assets/maps/`). Los sonidos se generan por código al iniciar. No hay dependencias externas y funciona sin internet.
 
@@ -74,6 +74,16 @@ En el celular, apoyás un dedo y arrastrás: el joystick aparece donde tocaste. 
   - Sólo recibe daño con 5 zombis o más mordiéndolo a la vez (las marcas sobre el tanque se pintan de verde) y no puede apuntar a los que tiene pegados: hay que rodearlo.
   - Al destruirlo: +400 puntos y 6 zombis de regalo.
 - Selector de niveles compacto para los 5 mapas.
+
+### v0.5: horda continua y contagio de enemigos ✔
+- Al ganar un nivel, la horda (cantidad de zombis) y las mejoras pasan al siguiente. Queda guardado: si elegís ese nivel desde el menú, arrancás con esa horda.
+- Cada mejora tiene tope de nivel 5 (HORDA no tiene tope).
+- Los enemigos armados se pueden **contagiar**: si cuando caen los rodean suficientes zombis, se suman a la horda. Policía, superviviente y moto: 5 zombis. Soldado: 10. El tanque no se contagia. Al morderlos aparecen marcas sobre su cabeza que se pintan de verde con cada zombi que los rodea.
+- Con una horda grande llegan más enemigos armados (hasta +40 % con 100 zombis), para que los niveles sigan siendo un desafío.
+- Nivel 1 más amable en las últimas oleadas y tanque un poco menos castigador.
+
+### v0.5.1 ✔
+- Comisaría: la zona jugable es sólo el estacionamiento y la calle de arriba. Nadie puede pasar a las veredas de los costados ni a la parte del edificio; los enemigos entran por la calle, por los costados y salen por la puerta de la comisaría.
 
 ### Fuera del MVP a propósito
 La lámina muestra **botón de mordida**, **botón sprint**, **S.W.A.T.** y **barricadas por oleada**. La especificación y la planilla piden explícitamente *no* incluir botones de mordida o sprint, así que no están. S.W.A.T. y barricadas dinámicas quedan como ampliaciones naturales: se agregan como un nuevo `kind` en `Unit` y una entrada en `WAVES`. Tampoco hay música de fondo, sólo efectos.

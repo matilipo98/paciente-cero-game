@@ -184,6 +184,9 @@ func _show_levels() -> void:
 		var status := "Récord: oleada %d" % SaveManager.best_wave_in(lv) if open else "Superá el nivel %d para desbloquearlo" % (lv - 1)
 		if open and SaveManager.best_wave_in(lv) == 0:
 			status = "¡Nuevo! Tocá para jugar"
+		var hc := int(SaveManager.carry_for(lv).get("zombies", 0))
+		if open and hc > 1:
+			status += " · horda de %d" % hc
 		var t4 := UIKit.label(status, 19, Palette.ZOMBIE_OUTLINE.darkened(0.2) if open else Palette.DANGER_DARK, 0, Palette.INK, HORIZONTAL_ALIGNMENT_LEFT)
 		t4.position = Vector2(130, 126)
 		t4.size = Vector2(450, 30)

@@ -576,7 +576,7 @@ func show_results(stats: Dictionary) -> void:
 	if victory:
 		sub_text = "Superaste las %d oleadas de %s" % [int(stats.get("total_waves", 10)), Levels.level_name(lv).capitalize()]
 		if has_next:
-			sub_text += " · ¡Nivel %d desbloqueado!" % (lv + 1)
+			sub_text += " · Pasás al nivel %d con %d zombis" % [lv + 1, int(stats.get("carry", 1))]
 	var sub := UIKit.label(sub_text, 22, Palette.INK_SOFT, 0, Palette.INK, HORIZONTAL_ALIGNMENT_CENTER, _w - 40)
 	sub.position = Vector2(20, cy - 248)
 	sub.size = Vector2(_w - 40, 50)

@@ -37,6 +37,8 @@ var infected_total := 0
 var police_defeated := 0
 ## Enemigos armados derrotados por tipo (ActorArt.Kind → cantidad).
 var defeated_by_kind: Dictionary = {}
+## Enemigos armados que se sumaron a la horda.
+var armed_infected := 0
 var zombies_lost := 0
 var combo := 0
 var best_combo := 0
@@ -64,11 +66,29 @@ func _ready() -> void:
 	waves.wave_cleared.connect(_on_wave_cleared)
 	ui.setup(self)
 	leader = _make_zombie(map.player_start, Balance.LEADER_HP, true)
+	var carried := _apply_carry()
 	ui.update_zombies(zombies.size())
 	state = GState.INTRO
 	ui.announce_level(level)
+	if carried > 1:
+		_schedule(0.6, ui.toast.bind("¡Tu horda de %d zombis sigue con vos!" % carried, Palette.ZOMBIE_OUTLINE))
 	_schedule(1.2, ui.announce_wave.bind(1))
 	_schedule(2.2, _start_wave.bind(1))
+
+
+## Horda y mejoras con las que se ganó el nivel anterior. Devuelve el tamaño de la horda.
+func _apply_carry() -> int:
+	var c := SaveManager.carry_for(level)
+	if c.is_empty():
+		return 1
+	upgrades.load_levels(c.get("upgrades", {}))
+	var n := clampi(int(c.get("zombies", 1)), 1, Balance.MAX_ZOMBIES)
+	for i in n - 1:
+		# Misma espiral que la formación, alrededor del punto de partida
+		var off := Vector2.RIGHT.rotated(i * 2.39996 + 0.7) * 36.0 * sqrt(i + 1.0)
+		_make_zombie(map.player_start + off, Balance.ALLY_HP + upgrades.extra_hp, false)
+	max_horde = zombies.size()
+	return zombies.size()
 
 
 # ---------------------------------------------------------------------------
@@ -405,10 +425,28 @@ func on_police_defeated(p: Unit) -> void:
 		SaveManager.vibrate(120)
 		AudioManager.play("boom", 0.0, 2.0)
 		spawn_bonus_allies(Balance.TANK_BONUS_ALLIES)
-	else:
-		effects.poof(p.position, col)
+		p.start_die()
+		return
+	var need := Balance.infect_need(p.kind)
+	if need > 0 and p.attackers >= need and zombies.size() < Balance.MAX_ZOMBIES:
+		# Rodeado por la horda: se contagia y se suma como un zombi más.
+		p.become_zombie(Balance.ALLY_HP + upgrades.extra_hp)
+		zombies.append(p)
+		_formation_dirty = true
+		infected_total += 1
+		armed_infected += 1
+		max_horde = maxi(max_horde, zombies.size())
+		effects.infection(p.position, true)
+		effects.popup(p.position + Vector2(0, -22), "¡CONTAGIADO!", Palette.ZOMBIE_SKIN_LIGHT, 26)
 		effects.popup(p.position, "+%d" % pts, Palette.GOLD, 28)
-		AudioManager.play("police_down", 0.05, -1.0)
+		ui.update_zombies(zombies.size())
+		AudioManager.play("infect", 0.05, 0.0, 0.8)
+		AudioManager.play("police_down", 0.05, -4.0)
+		SaveManager.vibrate(40)
+		return
+	effects.poof(p.position, col)
+	effects.popup(p.position, "+%d" % pts, Palette.GOLD, 28)
+	AudioManager.play("police_down", 0.05, -1.0)
 	p.start_die()
 
 
@@ -494,7 +532,10 @@ func _victory() -> void:
 
 func _finish_run(victory: bool) -> Dictionary:
 	var reached := maxi(1, waves.wave)
-	var rec := SaveManager.submit_run(score, reached, infected_total, victory, max_horde, level)
+	var carry := {}
+	if victory and level < Levels.count():
+		carry = {"zombies": maxi(1, zombies.size()), "upgrades": upgrades.levels.duplicate()}
+	var rec := SaveManager.submit_run(score, reached, infected_total, victory, max_horde, level, carry)
 	return {
 		"victory": victory,
 		"level": level,
@@ -508,6 +549,7 @@ func _finish_run(victory: bool) -> Dictionary:
 		"best_wave": SaveManager.best_wave,
 		"new_record": rec,
 		"max_horde": max_horde,
+		"carry": int(carry.get("zombies", 0)),
 	}
 
 
