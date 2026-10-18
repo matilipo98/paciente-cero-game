@@ -52,12 +52,14 @@ static func _find_target(z: Unit, gm) -> Unit:
 	var leash: float = Balance.ALLY_LEASH * (0.75 + 0.25 * gm.upgrades.detect_mult)
 	var best: Unit = null
 	var best_d := detect * detect
-	gm.enemy_grid.query(z.position, detect, _buf)
+	gm.enemy_grid.query(z.position, detect + 40.0, _buf)
 	for c in _buf:
 		var u: Unit = c
 		if u.state != Unit.State.ACTIVE or u.kind == ActorArt.Kind.ZOMBIE:
 			continue
 		var d2 := z.position.distance_squared_to(u.position)
+		if u.kind == ActorArt.Kind.TANK:
+			d2 *= 0.4  # el tanque es grande y atrae a la horda: hay que rodearlo
 		if d2 < best_d:
 			if leader != null and u.position.distance_squared_to(leader.position) > leash * leash:
 				continue

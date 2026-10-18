@@ -13,6 +13,8 @@ var _done := false
 
 
 func _ready() -> void:
+	var lv_env := OS.get_environment("LEVEL")
+	GameManager.selected_level = int(lv_env) if lv_env != "" else 1
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	shot = OS.get_environment("SHOT")
 	seed(7)
@@ -32,6 +34,12 @@ func _physics_process(_d: float) -> void:
 	match shot:
 		"menu":
 			if frames == 50: _save()
+		"menu_levels":
+			if frames == 5:
+				SaveManager.unlocked_level = 4
+				SaveManager.best_wave_by_level = {1: 10, 2: 15, 3: 20, 4: 9}
+				menu._show_levels()
+			if frames == 40: _save()
 		"menu_upgrades":
 			if frames == 5: menu._show_upgrades()
 			if frames == 40: _save()
@@ -43,6 +51,19 @@ func _physics_process(_d: float) -> void:
 			if frames == 40: _save()
 		"game_start":
 			if frames == 100: _save()
+		"game_at":
+			_auto_upgrade()
+			# STARTWAVE=n salta a esa oleada con ALLIES zombis extra (para capturar enemigos tardíos).
+			var sw := int(OS.get_environment("STARTWAVE")) if OS.get_environment("STARTWAVE") != "" else 0
+			if sw > 0 and frames == 150:
+				game.spawn_bonus_allies(int(OS.get_environment("ALLIES")) if OS.get_environment("ALLIES") != "" else 30)
+				for h in game.humans: h.queue_free()
+				game.humans.clear()
+				for p in game.police: p.queue_free()
+				game.police.clear()
+				game.waves.start_wave(sw)
+				game.ui.set_wave(sw)
+			if frames == int(OS.get_environment("SHOTFRAME")): _save()
 		"game_horde":
 			_auto_upgrade()
 			if game.waves.wave >= 5 and game.police.size() >= 2 and game.zombies.size() > 30 and frames % 20 == 0 and not _done:
@@ -64,7 +85,7 @@ func _physics_process(_d: float) -> void:
 		"victory":
 			_auto_upgrade()
 			if frames == 300:
-				game.waves.wave = 10
+				game.waves.wave = game.waves.total_waves()
 				game.waves.running = false
 				game._on_wave_cleared()
 			if frames == 460: _save()
@@ -107,6 +128,7 @@ func _save() -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
-	img.save_png(ProjectSettings.globalize_path(OUT_DIR + shot + ".png"))
+	var fname := shot if OS.get_environment("SHOTNAME") == "" else OS.get_environment("SHOTNAME")
+	img.save_png(ProjectSettings.globalize_path(OUT_DIR + fname + ".png"))
 	print("[shot] saved ", shot)
 	get_tree().quit()

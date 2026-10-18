@@ -44,7 +44,57 @@ const POLICE_SHOOT_RANGE := 290.0
 const POLICE_PREFERRED_DIST := 200.0
 const POLICE_FIRE_INTERVAL := 1.25
 const BULLET_SPEED := 340.0
+
+# --- Soldados (nivel 3) -----------------------------------------------------------
+const SOLDIER_RADIUS := 21.0
+const SOLDIER_SPEED := 108.0
+## Más resistentes que la policía (segundos de contacto con un solo zombi).
+const SOLDIER_TOUGHNESS := 3.2
+const SOLDIER_SHOOT_RANGE := 330.0
+const SOLDIER_PREFERRED_DIST := 230.0
+## Disparan ráfagas: SOLDIER_BURST tiros separados por SOLDIER_BURST_GAP segundos.
+const SOLDIER_BURST := 3
+const SOLDIER_BURST_GAP := 0.12
+const SOLDIER_FIRE_INTERVAL := 2.0
+const SOLDIER_DMG := 2
 const BULLET_RADIUS := 4.5
+
+# --- Supervivientes (nivel 4) -------------------------------------------------------
+## Escopeta: abanico de perdigones de corto alcance.
+const SURVIVOR_RADIUS := 19.5
+const SURVIVOR_SPEED := 125.0
+const SURVIVOR_TOUGHNESS := 2.4
+const SURVIVOR_SHOOT_RANGE := 215.0
+const SURVIVOR_PREFERRED_DIST := 165.0
+const SURVIVOR_FIRE_INTERVAL := 1.9
+const SURVIVOR_PELLETS := 5
+const SURVIVOR_SPREAD := 0.42
+const PELLET_LIFE := 0.62
+
+## Motociclista: más rápido que la horda, la rodea y dispara en movimiento.
+const BIKER_RADIUS := 22.0
+const BIKER_SPEED := 245.0
+const BIKER_ACCEL := 520.0
+const BIKER_TOUGHNESS := 1.6
+const BIKER_ORBIT := 200.0
+const BIKER_SHOOT_RANGE := 300.0
+const BIKER_FIRE_INTERVAL := 0.95
+
+# --- Tanque (jefe del nivel 5) ----------------------------------------------------
+const TANK_RADIUS := 46.0
+const TANK_SPEED := 52.0
+## "Vida" en segundos-zombi: sólo recibe daño con TANK_MIN_ATTACKERS mordiéndolo a la vez.
+const TANK_TOUGHNESS := 36.0
+const TANK_MIN_ATTACKERS := 5
+const TANK_MAX_ATTACKERS := 14
+const TANK_FIRE_INTERVAL := 3.3
+const TANK_RANGE := 430.0
+## Más cerca que esto el cañón no puede apuntar: rodearlo es la forma de ganarle.
+const TANK_MIN_RANGE := 105.0
+const SHELL_FLIGHT := 1.1
+const SHELL_BLAST := 72.0
+const SHELL_DMG := 2
+const TANK_BONUS_ALLIES := 6
 
 # --- Combo / Fiebre ----------------------------------------------------------
 const COMBO_WINDOW := 3.0
@@ -58,6 +108,10 @@ const COMBO_MAX_MULT := 3.0
 # --- Puntuación ----------------------------------------------------------------
 const SCORE_INFECT := 10
 const SCORE_POLICE := 25
+const SCORE_SOLDIER := 40
+const SCORE_SURVIVOR := 30
+const SCORE_BIKER := 35
+const SCORE_TANK := 400
 const SCORE_WAVE := 100
 
 # --- Oleadas ---------------------------------------------------------------------

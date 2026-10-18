@@ -11,6 +11,7 @@ const TRIANGLE := 2
 const MIN_INTERVAL := {
 	"infect": 0.045, "bite": 0.05, "shoot": 0.07, "hurt": 0.08,
 	"zombie_die": 0.07, "tap": 0.03, "police_down": 0.05,
+	"shotgun": 0.08, "boom": 0.12, "engine": 0.6,
 }
 
 var _streams: Dictionary = {}
@@ -87,6 +88,25 @@ func _build() -> void:
 	b = PackedFloat32Array()
 	_tone(b, 900, 380, 0.05, SQUARE, 0.2, 0.001, 1.8, 0.6)
 	_streams["shoot"] = _wav(b)
+
+	b = PackedFloat32Array()
+	# Escopetazo: estallido más grave y con más ruido
+	_tone(b, 520, 120, 0.12, SQUARE, 0.32, 0.001, 1.6, 0.8)
+	_streams["shotgun"] = _wav(b)
+
+	b = PackedFloat32Array()
+	# Cañonazo y explosión: retumbe grave con ruido
+	_tone(b, 160, 40, 0.42, SQUARE, 0.5, 0.002, 1.3, 0.75)
+	_streams["boom"] = _wav(b)
+
+	b = PackedFloat32Array()
+	_tone(b, 120, 70, 0.18, SQUARE, 0.4, 0.002, 1.2, 0.6)
+	_streams["cannon"] = _wav(b)
+
+	b = PackedFloat32Array()
+	# Motor de la moto (pasada corta)
+	_tone(b, 110, 150, 0.22, SQUARE, 0.18, 0.01, 0.6, 0.3)
+	_streams["engine"] = _wav(b)
 
 	b = PackedFloat32Array()
 	_tone(b, 784, 784, 0.11, SINE, 0.5, 0.004, 0.8)

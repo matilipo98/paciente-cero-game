@@ -19,6 +19,9 @@ var human_looks: Array[int] = []
 var zombie_looks: Array[int] = []
 var leader_look := -1
 var police_look := -1
+var soldier_look := -1
+var survivor_look := -1
+var biker_look := -1
 
 signal ready_baked
 
@@ -44,6 +47,9 @@ func _define_looks() -> void:
 		zombie_looks.append(_add(ActorArt.Kind.ZOMBIE, zc, Palette.ZOMBIE_OUTLINE, Palette.ZOMBIE_SKIN, 1))
 	leader_look = _add(ActorArt.Kind.ZOMBIE, Palette.ZOMBIE_CLOTH, Palette.ZOMBIE_OUTLINE, Palette.ZOMBIE_SKIN, 2)
 	police_look = _add(ActorArt.Kind.POLICE, Palette.POLICE, Palette.POLICE_DARK, Palette.HUMAN_SKIN, 0)
+	soldier_look = _add(ActorArt.Kind.SOLDIER, Palette.SOLDIER_UNIFORM, Palette.SOLDIER_HELMET, Palette.HUMAN_SKIN, 0)
+	survivor_look = _add(ActorArt.Kind.SURVIVOR, Palette.SURV_SHIRT, Palette.SURV_HAIR, Palette.HUMAN_SKIN, 0)
+	biker_look = _add(ActorArt.Kind.BIKER, Palette.SURV_SHIRT, Palette.BIKER_HELMET, Palette.HUMAN_SKIN, 0)
 
 
 ## Punto blanco suave (alfa normal) para partículas: 4 vértices en vez de un círculo de 64.

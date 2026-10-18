@@ -144,7 +144,7 @@ func _build_hud() -> void:
 	# Oleada + barra + reloj (GFX-040 a GFX-042)
 	_wave_pill = UIKit.panel(Rect2(_w * 0.5 - 125, _top, 250, 85), dark, 24)
 	hud.add_child(_wave_pill)
-	_wave_label = UIKit.label("OLEADA 1/%d" % Balance.wave_count(), 26, Palette.WHITE)
+	_wave_label = UIKit.label("OLEADA 1/%d" % gm.waves.total_waves(), 26, Palette.WHITE)
 	_wave_label.position = Vector2(0, 4)
 	_wave_label.size = Vector2(250, 36)
 	_wave_pill.add_child(_wave_label)
@@ -283,7 +283,7 @@ func update_leader_hp(_hp: float) -> void:
 
 
 func set_wave(n: int) -> void:
-	_wave_label.text = "OLEADA %d/%d" % [n, Balance.wave_count()]
+	_wave_label.text = "OLEADA %d/%d" % [n, gm.waves.total_waves()]
 	_wave_bar.value = 1.0
 	_wave_bar.queue_redraw()
 	UIKit.bounce(_wave_pill, 1.08, 0.3)
@@ -332,9 +332,15 @@ func show_banner(text: String, col: Color = Palette.WHITE, outline: Color = Pale
 	tw.chain().tween_property(_banner, "modulate:a", 0.0, 0.25)
 
 
+## Presentación del nivel al entrar: "NIVEL 2" y el nombre del mapa.
+func announce_level(lv: int) -> void:
+	show_banner("NIVEL %d" % lv, Palette.GOLD, Palette.INK, 0.6)
+	toast(Levels.level_name(lv), Palette.WHITE)
+
+
 func announce_wave(n: int) -> void:
 	var txt := "OLEADA %d" % n
-	if n == Balance.wave_count():
+	if n == gm.waves.total_waves():
 		txt = "¡OLEADA FINAL!"
 	show_banner(txt, Palette.WHITE, Palette.INK, 0.5)
 
@@ -555,22 +561,31 @@ func show_results(stats: Dictionary) -> void:
 	o.create_tween().tween_property(o, "modulate:a", 1.0, 0.35)
 
 	var cy := _h * 0.5
-	var title_text := "¡CIUDAD CONTAGIADA!" if victory else "LA HUMANIDAD RESISTIÓ"
+	var has_next: bool = stats.get("has_next", false)
+	var lv: int = stats.get("level", 1)
+	var title_text := "LA HUMANIDAD RESISTIÓ"
+	if victory:
+		title_text = "¡NIVEL SUPERADO!" if has_next else "¡INVASIÓN COMPLETA!"
 	var title_col := Palette.ZOMBIE_SKIN if victory else Palette.DANGER
 	var title := UIKit.label(title_text, 46, title_col, 14, Palette.INK)
 	title.position = Vector2(0, cy - 330)
 	title.size = Vector2(_w, 95)
 	o.add_child(title)
 	UIKit.bounce(title, 1.25, 0.4)
-	var sub := UIKit.label("Superaste las 10 oleadas" if victory else "Tu horda fue eliminada", UIKit.BODY, Palette.INK_SOFT)
-	sub.position = Vector2(0, cy - 245)
-	sub.size = Vector2(_w, 36)
+	var sub_text := "Nivel %d · %s · tu horda fue eliminada" % [lv, Levels.level_name(lv).capitalize()]
+	if victory:
+		sub_text = "Superaste las %d oleadas de %s" % [int(stats.get("total_waves", 10)), Levels.level_name(lv).capitalize()]
+		if has_next:
+			sub_text += " · ¡Nivel %d desbloqueado!" % (lv + 1)
+	var sub := UIKit.label(sub_text, 22, Palette.INK_SOFT, 0, Palette.INK, HORIZONTAL_ALIGNMENT_CENTER, _w - 40)
+	sub.position = Vector2(20, cy - 248)
+	sub.size = Vector2(_w - 40, 50)
 	o.add_child(sub)
 
 	var card := UIKit.panel(Rect2(_w * 0.5 - 250, cy - 190, 500, 330), Palette.WHITE, 30, Palette.INK, 3, true)
 	o.add_child(card)
 	var rows := [
-		["wave", "Oleada alcanzada", int(stats.wave)],
+		["wave", "Oleada (nivel %d)" % lv, int(stats.wave)],
 		["infections", "Humanos contagiados", int(stats.infected)],
 		["horde_max", "Horda máxima", int(stats.max_horde)],
 		["coin", "Puntuación", int(stats.score)],
@@ -602,9 +617,13 @@ func show_results(stats: Dictionary) -> void:
 		badge.add_child(bl)
 		UIKit.bounce(badge, 1.3, 0.5)
 
-	var retry := UIKit.button("REINTENTAR", Palette.POSITIVE, Palette.INK, Vector2(250, 76), 28)
+	var retry_text := "SIGUIENTE" if has_next else "REINTENTAR"
+	var retry := UIKit.button(retry_text, Palette.POSITIVE, Palette.INK, Vector2(250, 76), 28)
 	retry.position = Vector2(_w * 0.5 - 262, cy + 230)
-	retry.pressed.connect(func() -> void: gm.restart())
+	if has_next:
+		retry.pressed.connect(func() -> void: gm.next_level())
+	else:
+		retry.pressed.connect(func() -> void: gm.restart())
 	o.add_child(retry)
 	var menu := UIKit.button("MENÚ", Palette.VIOLET, Palette.INK, Vector2(250, 76), 28)
 	menu.position = Vector2(_w * 0.5 + 12, cy + 230)

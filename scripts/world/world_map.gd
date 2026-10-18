@@ -1,12 +1,15 @@
 class_name WorldMap
 extends Node2D
-## Mapa urbano fijo en vista cenital (GFX-012 a GFX-036).
-## Dibuja toda la ciudad con primitivas 2D y expone colisiones simples
-## (rectángulos y círculos) + una grilla para consultas rápidas.
+## Mapas del juego en vista cenital, con colisiones simples (rectángulos y círculos)
+## y una grilla para consultas rápidas.
+##  · "city": la ciudad, dibujada con primitivas 2D (GFX-012 a GFX-036).
+##  · "station" / "field" / "ruins" / "desert": comisaría, campo, ciudad en ruinas y desierto,
+##    a partir de las ilustraciones del juego
+##    (assets/maps/), con los obstáculos calibrados sobre cada imagen.
 
 const CELL := 80.0
 ## Margen con el que cada obstáculo se registra en la grilla (≥ radio máximo de actor).
-const INFLATE := 28.0
+const INFLATE := 50.0
 
 enum Shape { RECT, CIRCLE }
 
@@ -23,6 +26,12 @@ var spawn_points: Array[Vector2] = [
 	Vector2(310, 1262), Vector2(410, 1262), Vector2(170, 1262), Vector2(550, 1262),
 ]
 var player_start := Vector2(330, 780)
+
+## Mapa a cargar. Vacío = el del nivel elegido (GameManager.selected_level).
+@export var map_id := ""
+var _image: Texture2D = null
+var _image_rect := Rect2()
+var _fill := Palette.SIDEWALK
 
 ## Optimización: el mapa estático se hornea en 2 texturas (mitad superior e inferior)
 ## a 1.5× de resolución y luego se dibuja con 2 rectángulos por frame.
@@ -51,10 +60,22 @@ var _barricades: Array[Rect2] = []
 
 
 func _ready() -> void:
-	_build_layout()
+	if map_id == "":
+		map_id = Levels.map_id(GameManager.selected_level)
+	match map_id:
+		"station":
+			_layout_station()
+		"field":
+			_layout_field()
+		"ruins":
+			_layout_ruins()
+		"desert":
+			_layout_desert()
+		_:
+			_layout_city()
 	_build_grid()
 	queue_redraw()
-	if not baking_copy:
+	if not baking_copy and _image == null:
 		_bake.call_deferred()
 
 
@@ -67,6 +88,7 @@ func _bake() -> void:
 		var wr := Rect2(BAKE_RECT.position + Vector2(0, i * th), Vector2(BAKE_RECT.size.x, th))
 		var copy: WorldMap = (get_script() as GDScript).new()
 		copy.baking_copy = true
+		copy.map_id = map_id
 		copy.scale = Vector2.ONE * BAKE_SCALE
 		copy.position = -wr.position * BAKE_SCALE
 		var tex: Texture2D = await Baker.bake_node(self, Vector2i(wr.size * BAKE_SCALE), copy)
@@ -81,7 +103,7 @@ func _bake() -> void:
 # Layout
 # ---------------------------------------------------------------------------
 
-func _build_layout() -> void:
+func _layout_city() -> void:
 	# Edificios en los extremos (azoteas: GFX-019 a GFX-022)
 	_add_building(Rect2(-80, -600, 190, 990), Palette.BUILDING_CORAL, Palette.BUILDING_CORAL_LIGHT)
 	_add_building(Rect2(610, -600, 190, 990), Palette.BUILDING_BLUE, Palette.BUILDING_BLUE_LIGHT)
@@ -139,6 +161,110 @@ func _build_layout() -> void:
 	for c in [Vector2(452, 1150), Vector2(584, 1104)]:
 		_cones.append(c)
 		_add_circle_obstacle(c, 8.0)
+
+
+## Comisaría: imagen 900×1600 escalada a 720×1280 (factor 0.8).
+func _layout_station() -> void:
+	_image = load("res://assets/maps/station.jpg")
+	_image_rect = Rect2(0, 0, 720, 1280)
+	_fill = Color8(135, 150, 183)
+	player_start = Vector2(360, 640)
+	spawn_points = [
+		Vector2(360, 150), Vector2(30, 180), Vector2(695, 185),
+		Vector2(30, 600), Vector2(30, 820), Vector2(692, 560), Vector2(692, 900),
+		Vector2(360, 1250), Vector2(230, 1150), Vector2(500, 1150),
+	]
+	# Árboles, canteros y veredas con plantas
+	for c in [Vector3(22, 205, 38), Vector3(668, 262, 42), Vector3(35, 935, 40), Vector3(682, 935, 40),
+			Vector3(40, 1195, 42), Vector3(660, 1195, 48)]:
+		_add_circle_obstacle(Vector2(c.x, c.y), c.z)
+	for r in [Rect2(0, 232, 128, 70), Rect2(605, 235, 115, 115),
+			Rect2(0, 955, 132, 55), Rect2(588, 955, 132, 55),
+			Rect2(50, 1072, 120, 45), Rect2(548, 1072, 122, 45),
+			Rect2(95, 1225, 100, 55), Rect2(585, 1235, 60, 45)]:
+		_add_rect_obstacle(r)
+	# Patrulleros estacionados y edificio de la comisaría
+	_add_rect_obstacle(Rect2(102, 408, 82, 140))
+	_add_rect_obstacle(Rect2(540, 742, 90, 142))
+	_add_rect_obstacle(Rect2(170, 1035, 380, 135))
+
+
+## Campo: imagen 1024×1536 escalada para cubrir 720×1280 (factor 0.833, recorte lateral).
+func _layout_field() -> void:
+	_image = load("res://assets/maps/field.jpg")
+	var sc := 1280.0 / 1536.0
+	_image_rect = Rect2((720.0 - 1024.0 * sc) * 0.5, 0, 1024.0 * sc, 1280)
+	_fill = Color8(214, 168, 128)
+	player_start = Vector2(360, 640)
+	spawn_points = [
+		Vector2(480, 150), Vector2(250, 150), Vector2(25, 380), Vector2(25, 620),
+		Vector2(695, 460), Vector2(695, 980), Vector2(330, 1255), Vector2(450, 1255),
+		Vector2(25, 1120), Vector2(695, 740),
+	]
+	# Árboles, rocas y arbustos (círculos: x, y, radio)
+	for c in [Vector3(35, 110, 50), Vector3(150, 190, 36), Vector3(105, 212, 28), Vector3(325, 118, 28),
+			Vector3(680, 90, 55), Vector3(603, 240, 32), Vector3(690, 305, 42), Vector3(668, 345, 24),
+			Vector3(440, 388, 40), Vector3(15, 500, 45), Vector3(42, 545, 32), Vector3(665, 620, 60),
+			Vector3(80, 765, 18), Vector3(115, 735, 18), Vector3(150, 705, 18), Vector3(178, 680, 18),
+			Vector3(68, 722, 26), Vector3(42, 800, 24), Vector3(165, 765, 15), Vector3(705, 880, 16),
+			Vector3(515, 905, 42), Vector3(35, 930, 55), Vector3(90, 1025, 24), Vector3(485, 1115, 48),
+			Vector3(412, 1150, 26), Vector3(185, 1215, 28), Vector3(690, 1215, 58), Vector3(648, 1252, 30),
+			Vector3(540, 1220, 18)]:
+		_add_circle_obstacle(Vector2(c.x, c.y), c.z)
+	# Cajones de madera
+	_add_rect_obstacle(Rect2(605, 268, 60, 80))
+	_add_rect_obstacle(Rect2(700, 780, 20, 55))
+
+
+## Ciudad en ruinas: imagen 1024×1536 escalada para cubrir 720×1280 (como el campo).
+func _layout_ruins() -> void:
+	_image = load("res://assets/maps/ruins.jpg")
+	var sc := 1280.0 / 1536.0
+	_image_rect = Rect2((720.0 - 1024.0 * sc) * 0.5, 0, 1024.0 * sc, 1280)
+	_fill = Color8(150, 138, 128)
+	player_start = Vector2(420, 730)
+	spawn_points = [
+		Vector2(230, 20), Vector2(450, 20), Vector2(630, 20), Vector2(20, 345), Vector2(20, 600),
+		Vector2(20, 700), Vector2(700, 450), Vector2(700, 990), Vector2(420, 1260), Vector2(560, 1260),
+	]
+	# Paredes de casas derrumbadas, autos quemados, cajones, barreras y tambores
+	for r in [Rect2(0, 30, 22, 110), Rect2(65, 100, 75, 58),
+			Rect2(268, 0, 22, 130), Rect2(290, 62, 110, 20), Rect2(392, 0, 20, 200),
+			Rect2(495, 5, 65, 60), Rect2(558, 125, 18, 110), Rect2(518, 165, 42, 70),
+			Rect2(660, 205, 60, 165), Rect2(40, 235, 25, 75), Rect2(0, 240, 40, 20),
+			Rect2(285, 370, 25, 130), Rect2(285, 455, 100, 45), Rect2(285, 370, 60, 20),
+			Rect2(0, 405, 95, 22), Rect2(72, 405, 22, 95), Rect2(0, 470, 40, 90),
+			Rect2(520, 405, 48, 65), Rect2(655, 505, 65, 30), Rect2(662, 590, 58, 60),
+			Rect2(315, 605, 75, 75), Rect2(628, 700, 25, 160), Rect2(628, 700, 92, 25),
+			Rect2(625, 915, 55, 40), Rect2(0, 780, 95, 22), Rect2(70, 785, 25, 180),
+			Rect2(0, 925, 95, 50), Rect2(135, 820, 50, 48), Rect2(278, 930, 72, 45),
+			Rect2(330, 950, 18, 70), Rect2(320, 1015, 30, 65), Rect2(15, 1052, 85, 70),
+			Rect2(150, 1085, 170, 195), Rect2(485, 1030, 35, 90), Rect2(622, 1068, 78, 60),
+			Rect2(645, 1140, 75, 140)]:
+		_add_rect_obstacle(r)
+	for c in [Vector3(425, 120, 14), Vector3(455, 450, 15), Vector3(120, 610, 9), Vector3(420, 690, 22),
+			Vector3(470, 680, 22), Vector3(165, 1025, 15), Vector3(190, 1000, 15), Vector3(528, 1200, 10)]:
+		_add_circle_obstacle(Vector2(c.x, c.y), c.z)
+
+
+## Desierto: imagen 900×1600, misma proporción que la pantalla (escala 0.8).
+func _layout_desert() -> void:
+	_image = load("res://assets/maps/desert.jpg")
+	_image_rect = Rect2(0, 0, 720, 1280)
+	_fill = Color8(222, 166, 120)
+	player_start = Vector2(360, 640)
+	spawn_points = [
+		Vector2(250, 20), Vector2(420, 20), Vector2(20, 600), Vector2(20, 800), Vector2(700, 350),
+		Vector2(700, 600), Vector2(700, 820), Vector2(320, 1260), Vector2(470, 1260), Vector2(20, 300),
+	]
+	# Rocas (los cráteres se pueden cruzar)
+	for c in [Vector3(65, 95, 55), Vector3(145, 110, 25), Vector3(115, 145, 18), Vector3(25, 175, 15),
+			Vector3(650, 235, 38), Vector3(680, 180, 28), Vector3(610, 195, 16), Vector3(665, 70, 16),
+			Vector3(100, 445, 32), Vector3(45, 478, 22), Vector3(65, 508, 14), Vector3(635, 475, 38),
+			Vector3(590, 508, 18), Vector3(680, 730, 20), Vector3(75, 955, 58), Vector3(60, 1045, 25),
+			Vector3(190, 880, 22), Vector3(665, 1090, 55), Vector3(680, 1155, 22), Vector3(560, 1195, 22),
+			Vector3(215, 1185, 22), Vector3(20, 370, 16), Vector3(680, 925, 18), Vector3(630, 975, 16)]:
+		_add_circle_obstacle(Vector2(c.x, c.y), c.z)
 
 
 func _add_building(r: Rect2, col: Color, light: Color) -> void:
@@ -305,6 +431,10 @@ func random_free_point(r: float = 20.0) -> Vector2:
 # ---------------------------------------------------------------------------
 
 func _draw() -> void:
+	if _image != null:
+		draw_rect(DRAW_AREA, _fill)
+		draw_texture_rect(_image, _image_rect, false)
+		return
 	if not _tiles.is_empty():
 		# Fuera del área horneada (pantallas muy altas o anchas): vereda y calles lisas.
 		draw_rect(DRAW_AREA, Palette.SIDEWALK)

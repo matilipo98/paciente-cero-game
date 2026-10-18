@@ -12,6 +12,8 @@ var _base := 0.0
 
 
 func _ready() -> void:
+	var lv := OS.get_environment("LEVEL")
+	GameManager.selected_level = int(lv) if lv != "" else 1
 	game = GAME.instantiate()
 	add_child(game)
 	SaveManager.tutorial_done = true
@@ -24,12 +26,18 @@ func _process(_d: float) -> void:
 		game.waves.time_left = 9999.0
 		game.waves.duration = 9999.0
 		game.waves._humans_left = 0
-		game.waves._police_times.clear()
+		game.waves._arrivals.clear()
 		game.spawn_bonus_allies(99)
 		for i in 30:
 			game.spawn_human(game.map.random_free_point())
 		for i in 6:
 			game.spawn_police(game.map.spawn_points[i])
+		if game.level >= 4:
+			# Mezcla de los niveles nuevos: supervivientes, motos y un tanque
+			for i in 3:
+				game.spawn_survivor(game.map.spawn_points[i + 3])
+				game.spawn_biker(game.map.spawn_points[i + 6])
+			game.spawn_tank(game.map.spawn_points[1])
 	if frames > 90:
 		var a := frames * 0.02
 		game.player._touch_dir = Vector2(cos(a), sin(a))

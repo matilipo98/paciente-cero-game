@@ -116,13 +116,82 @@ func _ready() -> void:
 
 
 func _refresh() -> void:
-	_record_label.text = "Récord de oleada: %d\nMáx. zombis: %d" % [SaveManager.best_wave, SaveManager.best_horde]
+	var top := clampi(SaveManager.unlocked_level, 1, Levels.count())
+	_record_label.text = "Nivel %d · récord oleada %d\nMáx. zombis: %d" % [top, SaveManager.best_wave_in(top), SaveManager.best_horde]
 	(_sound_btn.get_node("Icon") as IconView).set_icon("sound_on" if SaveManager.sound_on else "sound_off")
 
 
 func _on_play() -> void:
 	AudioManager.play("select")
+	_show_levels()
+
+
+func _start_level(lv: int) -> void:
+	GameManager.selected_level = lv
+	AudioManager.play("select")
 	SceneTransition.change_scene(GAME_SCENE)
+
+
+## Selector de niveles: cada mapa se desbloquea al superar el anterior.
+func _show_levels() -> void:
+	var card := _open_card("ELEGÍ EL NIVEL", 1150)
+	var thumbs := ["res://assets/maps/city_thumb.jpg", "res://assets/maps/station.jpg", "res://assets/maps/field.jpg",
+		"res://assets/maps/ruins.jpg", "res://assets/maps/desert.jpg"]
+	var unlocked := clampi(SaveManager.unlocked_level, 1, Levels.count())
+	var y := 88.0
+	for i in Levels.count():
+		var lv := i + 1
+		var open := lv <= unlocked
+		var b := Button.new()
+		b.position = Vector2(24, y)
+		b.size = Vector2(592, 176)
+		b.focus_mode = Control.FOCUS_NONE
+		var col := Palette.WHITE if open else Palette.CREAM.darkened(0.06)
+		var normal := UIKit.box(col, 24, Palette.INK if open else Color(Palette.INK, 0.25), 3)
+		var pressed := normal.duplicate() as StyleBoxFlat
+		pressed.bg_color = Palette.POSITIVE_LIGHT
+		b.add_theme_stylebox_override("normal", normal)
+		b.add_theme_stylebox_override("hover", normal)
+		b.add_theme_stylebox_override("pressed", pressed)
+		b.add_theme_stylebox_override("disabled", normal)
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		b.disabled = not open
+		card.add_child(b)
+		# Miniatura del mapa
+		var tr := TextureRect.new()
+		tr.texture = load(thumbs[i])
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tr.position = Vector2(12, 12)
+		tr.size = Vector2(100, 152)
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.clip_contents = true
+		if not open:
+			tr.modulate = Color(0.55, 0.55, 0.6, 1)
+		b.add_child(tr)
+		var t1 := UIKit.label("NIVEL %d" % lv, 20, Palette.VIOLET.darkened(0.25), 0, Palette.INK, HORIZONTAL_ALIGNMENT_LEFT)
+		t1.position = Vector2(130, 12)
+		t1.size = Vector2(440, 28)
+		b.add_child(t1)
+		var t2 := UIKit.label(Levels.level_name(lv), 30, Palette.INK if open else Palette.INK_SOFT, 2, Palette.INK, HORIZONTAL_ALIGNMENT_LEFT)
+		t2.position = Vector2(130, 38)
+		t2.size = Vector2(440, 42)
+		b.add_child(t2)
+		var t3 := UIKit.label("%d oleadas · %s" % [Levels.waves(lv).size(), Levels.FOES[i]], 19, Palette.INK_SOFT, 0, Palette.INK, HORIZONTAL_ALIGNMENT_LEFT)
+		t3.position = Vector2(130, 86)
+		t3.size = Vector2(450, 30)
+		b.add_child(t3)
+		var status := "Récord: oleada %d" % SaveManager.best_wave_in(lv) if open else "Superá el nivel %d para desbloquearlo" % (lv - 1)
+		if open and SaveManager.best_wave_in(lv) == 0:
+			status = "¡Nuevo! Tocá para jugar"
+		var t4 := UIKit.label(status, 19, Palette.ZOMBIE_OUTLINE.darkened(0.2) if open else Palette.DANGER_DARK, 0, Palette.INK, HORIZONTAL_ALIGNMENT_LEFT)
+		t4.position = Vector2(130, 126)
+		t4.size = Vector2(450, 30)
+		b.add_child(t4)
+		if open:
+			b.pressed.connect(_start_level.bind(lv))
+			UIKit.add_press_feedback(b)
+		y += 186.0
 
 
 func _toggle_sound() -> void:
@@ -210,7 +279,7 @@ func _show_records() -> void:
 	var card := _open_card("RÉCORDS", 640)
 	var rows := [
 		["coin", "Mejor puntuación", SaveManager.best_score],
-		["wave", "Oleada máxima", SaveManager.best_wave],
+		["wave", "Oleada máx. por nivel", " / ".join(range(1, Levels.count() + 1).map(func(l): return str(SaveManager.best_wave_in(l))))],
 		["horde_max", "Horda más grande", SaveManager.best_horde],
 		["infections", "Humanos contagiados", SaveManager.total_infected],
 		["trophy", "Partidas / victorias", "%d / %d" % [SaveManager.games_played, SaveManager.victories]],

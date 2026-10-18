@@ -8,6 +8,10 @@ enum GState { INTRO, PLAYING, INTERMISSION, UPGRADE, GAME_OVER, VICTORY }
 const GAME_SCENE := "res://scenes/game/game.tscn"
 const MENU_SCENE := "res://scenes/main/main_menu.tscn"
 
+## Nivel que se juega al cargar la escena (lo fija el menú antes de entrar).
+static var selected_level := 1
+var level := 1
+
 @onready var map: WorldMap = $WorldMap
 @onready var units_root: Node2D = $Units
 @onready var projectiles: Projectiles = $Projectiles
@@ -31,6 +35,8 @@ var state: int = GState.INTRO
 var score := 0
 var infected_total := 0
 var police_defeated := 0
+## Enemigos armados derrotados por tipo (ActorArt.Kind → cantidad).
+var defeated_by_kind: Dictionary = {}
 var zombies_lost := 0
 var combo := 0
 var best_combo := 0
@@ -49,6 +55,7 @@ var _buf: Array = []
 
 func _ready() -> void:
 	randomize()
+	level = clampi(selected_level, 1, Levels.count())
 	Unit.fever_active = false
 	projectiles.gm = self
 	infection.gm = self
@@ -59,8 +66,9 @@ func _ready() -> void:
 	leader = _make_zombie(map.player_start, Balance.LEADER_HP, true)
 	ui.update_zombies(zombies.size())
 	state = GState.INTRO
-	ui.announce_wave(1)
-	_schedule(1.0, _start_wave.bind(1))
+	ui.announce_level(level)
+	_schedule(1.2, ui.announce_wave.bind(1))
+	_schedule(2.2, _start_wave.bind(1))
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +196,54 @@ func spawn_police(pos: Vector2) -> void:
 	units_root.add_child(p)
 	police.append(p)
 	ui.toast("¡LLEGÓ LA POLICÍA!", Palette.POLICE)
+
+
+## Enemigos armados de los niveles 3 a 5: comparten la lista `police` con la policía.
+func spawn_soldier(pos: Vector2) -> void:
+	_spawn_armed(ActorArt.Kind.SOLDIER, pos, "s_tough", "¡LLEGÓ EL EJÉRCITO!", Palette.SOLDIER_UNIFORM)
+
+
+func spawn_survivor(pos: Vector2) -> void:
+	_spawn_armed(ActorArt.Kind.SURVIVOR, pos, "sv_tough", "¡SUPERVIVIENTES ARMADOS!", Palette.GUN_WOOD)
+
+
+func spawn_biker(pos: Vector2) -> void:
+	_spawn_armed(ActorArt.Kind.BIKER, pos, "b_tough", "¡MOTOS A LA VISTA!", Palette.MOTO_RED)
+
+
+func spawn_tank(pos: Vector2) -> void:
+	var t := _spawn_armed(ActorArt.Kind.TANK, pos, "t_tough", "", Palette.TANK_GREEN)
+	ui.show_banner("¡TANQUE!", Palette.TANK_LIGHT, Palette.INK, 0.9)
+	ui.toast("Rodealo con %d zombis o más" % Balance.TANK_MIN_ATTACKERS, Palette.TANK_GREEN)
+	t.facing = (map.player_start - t.position).normalized()
+	t.turret = t.facing
+	shake(5.0)
+	AudioManager.play("boom", 0.0, -8.0, 0.6)
+
+
+func _spawn_armed(k: int, pos: Vector2, tough_key: String, msg: String, col: Color) -> Unit:
+	var u := Unit.new()
+	match k:
+		ActorArt.Kind.SOLDIER:
+			u.setup_soldier(map.resolve(pos, Balance.SOLDIER_RADIUS))
+		ActorArt.Kind.SURVIVOR:
+			u.setup_survivor(map.resolve(pos, Balance.SURVIVOR_RADIUS))
+		ActorArt.Kind.BIKER:
+			u.setup_biker(map.resolve(pos, Balance.BIKER_RADIUS))
+		ActorArt.Kind.TANK:
+			u.setup_tank(map.resolve(pos, Balance.TANK_RADIUS))
+	u.hp *= float(waves.current_cfg.get(tough_key, 1.0))
+	u.max_hp = u.hp
+	u.wander_point = map.random_free_point()
+	units_root.add_child(u)
+	police.append(u)
+	if msg != "":
+		ui.toast(msg, col)
+	return u
+
+
+func shake(amount: float) -> void:
+	_shake = maxf(_shake, amount)
 
 
 func spawn_bonus_allies(n: int) -> void:
@@ -325,12 +381,35 @@ func _transfer_leader(from: Vector2) -> void:
 func on_police_defeated(p: Unit) -> void:
 	police.erase(p)
 	police_defeated += 1
-	add_score(Balance.SCORE_POLICE)
-	effects.poof(p.position, Palette.POLICE)
+	defeated_by_kind[p.kind] = int(defeated_by_kind.get(p.kind, 0)) + 1
+	var pts := Balance.SCORE_POLICE
+	var col := Palette.POLICE
+	match p.kind:
+		ActorArt.Kind.SOLDIER:
+			pts = Balance.SCORE_SOLDIER; col = Palette.SOLDIER_UNIFORM
+		ActorArt.Kind.SURVIVOR:
+			pts = Balance.SCORE_SURVIVOR; col = Palette.SURV_PACK
+		ActorArt.Kind.BIKER:
+			pts = Balance.SCORE_BIKER; col = Palette.MOTO_RED
+		ActorArt.Kind.TANK:
+			pts = Balance.SCORE_TANK; col = Palette.TANK_GREEN
+	add_score(pts)
 	effects.hit_star(p.position)
-	effects.popup(p.position, "+%d" % Balance.SCORE_POLICE, Palette.GOLD, 28)
+	if p.kind == ActorArt.Kind.TANK:
+		effects.explosion(p.position, 80.0)
+		for i in 6:
+			_schedule(0.35 + i * 0.4, effects.smoke.bind(p.position + Vector2(randf_range(-20, 20), -10)))
+		effects.popup(p.position, "+%d" % pts, Palette.GOLD, 40)
+		ui.show_banner("¡TANQUE DESTRUIDO!", Palette.GOLD, Palette.INK, 0.8)
+		shake(12.0)
+		SaveManager.vibrate(120)
+		AudioManager.play("boom", 0.0, 2.0)
+		spawn_bonus_allies(Balance.TANK_BONUS_ALLIES)
+	else:
+		effects.poof(p.position, col)
+		effects.popup(p.position, "+%d" % pts, Palette.GOLD, 28)
+		AudioManager.play("police_down", 0.05, -1.0)
 	p.start_die()
-	AudioManager.play("police_down", 0.05, -1.0)
 
 
 # ---------------------------------------------------------------------------
@@ -366,7 +445,7 @@ func _on_wave_cleared() -> void:
 	projectiles.clear_all()
 	AudioManager.play("wave_clear", 0.0, -1.0)
 	ui.wave_cleared(waves.wave)
-	if waves.wave >= Balance.wave_count():
+	if waves.wave >= waves.total_waves():
 		_schedule(1.6, _victory)
 	else:
 		_schedule(1.5, _open_upgrades)
@@ -415,9 +494,12 @@ func _victory() -> void:
 
 func _finish_run(victory: bool) -> Dictionary:
 	var reached := maxi(1, waves.wave)
-	var rec := SaveManager.submit_run(score, reached, infected_total, victory, max_horde)
+	var rec := SaveManager.submit_run(score, reached, infected_total, victory, max_horde, level)
 	return {
 		"victory": victory,
+		"level": level,
+		"total_waves": waves.total_waves(),
+		"has_next": victory and level < Levels.count(),
 		"wave": reached,
 		"infected": infected_total,
 		"police": police_defeated,
@@ -452,6 +534,11 @@ func resume_game() -> void:
 func restart() -> void:
 	get_tree().paused = false
 	SceneTransition.change_scene(GAME_SCENE)
+
+
+func next_level() -> void:
+	selected_level = mini(level + 1, Levels.count())
+	restart()
 
 
 func go_to_menu() -> void:

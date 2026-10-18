@@ -19,6 +19,8 @@ var _end_frames := 0
 
 
 func _ready() -> void:
+	var lv_env := OS.get_environment("LEVEL")
+	GameManager.selected_level = int(lv_env) if lv_env != "" else 1
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	game = GAME.instantiate()
 	add_child(game)
@@ -55,7 +57,7 @@ func _physics_process(_delta: float) -> void:
 		_end_frames += 1
 		if _end_frames > 120:
 			_finish()
-	if frames > 60 * 60 * 9:
+	if frames > 60 * 60 * 30:
 		print("[bot] timeout")
 		_finish()
 
@@ -94,6 +96,10 @@ func _finish() -> void:
 	var real := (Time.get_ticks_msec() - t0) / 1000.0
 	print("[bot] RESULT state=%s wave=%d score=%d infected=%d max_zombies=%d police_defeated=%d lost=%d saw_police=%s" % [
 		GameManager.GState.keys()[game.state], game.waves.wave, game.score, game.infected_total, max_zombies, game.police_defeated, game.zombies_lost, saw_police])
+	var kinds := {}
+	for k in game.defeated_by_kind:
+		kinds[ActorArt.Kind.keys()[k]] = game.defeated_by_kind[k]
+	print("[bot] defeated_by_kind=%s" % [kinds])
 	print("[bot] upgrades=%s" % [upgrades_taken])
 	print("[bot] simulated=%.1fs real=%.1fs avg_bot_frame=%.3fms" % [frames / 60.0, real, phys_usec / 1000.0 / maxf(1, phys_frames)])
 	if game.ui._overlay != null:

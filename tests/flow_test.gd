@@ -26,7 +26,7 @@ func _physics_process(_d: float) -> void:
 	match step:
 		0:
 			if t > 30 and cs.name == "MainMenu":
-				print("[flow] menu ok"); cs._on_play(); step = 1; t = 0
+				print("[flow] menu ok"); cs._on_play(); cs._start_level(1); step = 1; t = 0
 		1:
 			if t > 60 and cs.name == "Game":
 				print("[flow] game ok"); cs.pause_game(); step = 2; t = 0

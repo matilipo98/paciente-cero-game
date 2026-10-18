@@ -61,16 +61,32 @@ func _process_police(delta: float) -> void:
 	for p: Unit in gm.police:
 		if p.state != Unit.State.ACTIVE:
 			continue
-		gm.zombie_grid.query(p.position, 56.0, _buf)
+		var tank := p.kind == ActorArt.Kind.TANK
+		gm.zombie_grid.query(p.position, p.radius + 36.0, _buf)
 		var attackers := 0
 		for c in _buf:
 			var z: Unit = c
 			if z.state != Unit.State.ACTIVE:
 				continue
-			var reach: float = p.radius + z.radius + 7.0
+			var reach: float = p.radius + z.radius + (12.0 if tank else 7.0)
 			if p.position.distance_squared_to(z.position) <= reach * reach:
 				attackers += 1
 				z.facing = (p.position - z.position).normalized()
+		if tank:
+			# El tanque sólo cede si lo muerden varios a la vez.
+			p.tank_attackers = attackers
+			if attackers < Balance.TANK_MIN_ATTACKERS:
+				if attackers > 0:
+					p.under_attack = 0.1
+				continue
+			attackers = mini(attackers, Balance.TANK_MAX_ATTACKERS)
+			p.hp -= delta * attackers * fury
+			p.under_attack = 0.15
+			if randf() < delta * 14.0:
+				gm.effects.hit_star(p.position + Vector2(randf_range(-40, 40), randf_range(-40, 30)))
+			if p.hp <= 0.0:
+				_defeated.append(p)
+			continue
 		if attackers > 0:
 			attackers = mini(attackers, Balance.POLICE_MAX_ATTACKERS)
 			p.hp -= delta * attackers * fury

@@ -1,6 +1,6 @@
 class_name Unit
 extends Node2D
-## Actor genérico (humano, zombi o policía). Un mismo nodo puede pasar de humano
+## Actor genérico (humano, zombi o enemigo armado: policía, soldado, superviviente, moto o tanque). Un mismo nodo puede pasar de humano
 ## a zombi al contagiarse: así se reutiliza el objeto y la transformación es instantánea.
 ## La IA vive en HumanAI / ZombieAI / PoliceAI; acá sólo hay datos, movimiento y dibujo.
 
@@ -46,7 +46,14 @@ var bite_timer := 0.0
 var toughness := 1.0
 var fire_cd := 0.0
 var under_attack := 0.0
+var burst_left := 0
+var burst_cd := 0.0
 var sep_cache := Vector2.ZERO
+# --- Tanque ---
+var turret := Vector2.DOWN
+var recoil := 0.0
+var wrecked := false
+var tank_attackers := 0
 
 # --- Aspecto ---
 var cloth := Palette.CLOTH_BLUE
@@ -101,6 +108,48 @@ func setup_police(pos: Vector2) -> void:
 	hp = toughness
 	max_hp = toughness
 	fire_cd = randf_range(0.8, 1.6)
+	_spawn_pop()
+
+
+func setup_soldier(pos: Vector2) -> void:
+	kind = ActorArt.Kind.SOLDIER
+	position = pos
+	radius = Balance.SOLDIER_RADIUS
+	_apply_look(ActorAtlas.soldier_look)
+	toughness = Balance.SOLDIER_TOUGHNESS
+	hp = toughness
+	max_hp = toughness
+	fire_cd = randf_range(1.0, 2.0)
+	_spawn_pop()
+
+
+func setup_survivor(pos: Vector2) -> void:
+	_setup_armed(ActorArt.Kind.SURVIVOR, pos, Balance.SURVIVOR_RADIUS, Balance.SURVIVOR_TOUGHNESS, ActorAtlas.survivor_look)
+	fire_cd = randf_range(0.8, 1.5)
+
+
+func setup_biker(pos: Vector2) -> void:
+	_setup_armed(ActorArt.Kind.BIKER, pos, Balance.BIKER_RADIUS, Balance.BIKER_TOUGHNESS, ActorAtlas.biker_look)
+	accel = Balance.BIKER_ACCEL
+	fire_cd = randf_range(0.6, 1.2)
+
+
+## El tanque no usa el atlas: se dibuja a mano (casco, orugas y torreta que gira aparte).
+func setup_tank(pos: Vector2) -> void:
+	_setup_armed(ActorArt.Kind.TANK, pos, Balance.TANK_RADIUS, Balance.TANK_TOUGHNESS, ActorAtlas.soldier_look)
+	accel = 260.0
+	fire_cd = 2.0
+	turret = facing
+
+
+func _setup_armed(k: int, pos: Vector2, r: float, tough: float, lk: int) -> void:
+	kind = k
+	position = pos
+	radius = r
+	_apply_look(lk)
+	toughness = tough
+	hp = tough
+	max_hp = tough
 	_spawn_pop()
 
 
@@ -165,11 +214,20 @@ func start_die() -> void:
 	state = State.DYING
 	is_leader = false
 	queue_redraw()
+	if kind == ActorArt.Kind.TANK:
+		# Queda la carcasa humeante unos segundos y después se desvanece.
+		wrecked = true
+		var tw2 := create_tween()
+		tw2.tween_interval(2.6)
+		tw2.tween_property(self, "modulate:a", 0.0, 0.8)
+		tw2.tween_callback(queue_free)
+		return
 	var tw := create_tween().set_parallel(true)
-	var dur := 0.35 if kind == ActorArt.Kind.POLICE else 0.3
+	var armed := ActorArt.is_armed(kind)
+	var dur := 0.35 if armed else 0.3
 	tw.tween_property(self, "scale", Vector2.ONE * 0.35, dur).set_ease(Tween.EASE_IN)
 	tw.tween_property(self, "modulate:a", 0.0, dur)
-	if kind == ActorArt.Kind.POLICE:
+	if armed:
 		tw.tween_property(self, "rotation", PI * 0.5, dur)
 	tw.chain().tween_callback(queue_free)
 
@@ -214,7 +272,7 @@ func integrate(delta: float, map: WorldMap) -> void:
 	else:
 		moving = maxf(0.0, moving - delta * 5.0)
 		phase += delta * 2.0
-	if aim_dir != Vector2.ZERO:
+	if aim_dir != Vector2.ZERO and kind != ActorArt.Kind.TANK:
 		facing = facing.lerp(aim_dir, minf(1.0, delta * 14.0)).normalized()
 
 
@@ -253,13 +311,15 @@ func tick_visual(delta: float) -> void:
 		alert_timer -= delta
 	if under_attack > 0.0:
 		under_attack -= delta
-	if sprite == null and ActorAtlas.texture != null:
+	if recoil > 0.0:
+		recoil = maxf(0.0, recoil - delta * 3.0)
+	if sprite == null and ActorAtlas.texture != null and kind != ActorArt.Kind.TANK:
 		_make_sprite()
 	if sprite != null:
 		_update_sprite()
 		# Con sprites, el nodo sólo redibuja sombra y superposiciones cuando cambian.
 		var dynamic := is_leader or alert_timer > 0.0 or bar_timer > 0.0 \
-			or (kind == ActorArt.Kind.POLICE and hp < max_hp)
+			or (ActorArt.is_armed(kind) and hp < max_hp)
 		if fever_active != _last_fever:
 			_last_fever = fever_active
 			_needs_draw = true
@@ -269,7 +329,7 @@ func tick_visual(delta: float) -> void:
 		return
 	var animating := moving > 0.0 or is_leader or fever_active or state != State.ACTIVE \
 		or hurt_flash > 0.0 or infect_flash > 0.0 or bar_timer > 0.0 or alert_timer > 0.0 \
-		or under_attack > 0.0 or invuln > 0.0 or kind == ActorArt.Kind.POLICE
+		or under_attack > 0.0 or invuln > 0.0 or ActorArt.is_armed(kind)
 	if animating or _needs_draw:
 		_needs_draw = animating
 		queue_redraw()
@@ -310,7 +370,7 @@ func _update_sprite() -> void:
 		var k := 1.0 - clampf(bite_timer / Balance.BITE_TIME, 0.0, 1.0)
 		col = Color.WHITE.lerp(Color(0.6, 1.0, 0.55), k)
 		off = Vector2(randf_range(-1.5, 1.5), randf_range(-1.5, 1.5))
-	elif under_attack > 0.0 and kind == ActorArt.Kind.POLICE:
+	elif under_attack > 0.0 and ActorArt.is_armed(kind):
 		col = Color(1.0, 0.8, 0.8)
 		off = Vector2(randf_range(-1.2, 1.2), randf_range(-1.2, 1.2))
 	if col != sprite.modulate:
@@ -336,7 +396,7 @@ func _draw() -> void:
 		var k := 1.0 - clampf(bite_timer / Balance.BITE_TIME, 0.0, 1.0)
 		tint = Color(Palette.ZOMBIE_SKIN, k * 0.8)
 		ground = Vector2(randf_range(-1.5, 1.5), randf_range(-1.5, 1.5))
-	if under_attack > 0.0 and kind == ActorArt.Kind.POLICE:
+	if under_attack > 0.0 and ActorArt.is_armed(kind):
 		ground = Vector2(randf_range(-1.2, 1.2), randf_range(-1.2, 1.2))
 		tint = Color(Palette.DANGER_LIGHT, 0.35)
 
@@ -349,7 +409,10 @@ func _draw() -> void:
 	if is_leader and invuln > 0.0 and fmod(_t, 0.16) < 0.06:
 		tint = Color(Palette.WHITE, 0.6)
 
-	ActorArt.draw_actor(self, kind, ground, radius, facing, phase, moving, cloth, hair, skin, tint, variant)
+	if kind == ActorArt.Kind.TANK:
+		ActorArt.draw_tank(self, ground, radius, facing, turret, phase, tint, wrecked, recoil)
+	else:
+		ActorArt.draw_actor(self, kind, ground, radius, facing, phase, moving, cloth, hair, skin, tint, variant)
 
 	_draw_status(ground)
 
@@ -366,7 +429,9 @@ func _draw_overlays_sprite() -> void:
 func _draw_status(ground: Vector2) -> void:
 	if kind == ActorArt.Kind.HUMAN and alert_timer > 0.0:
 		ActorArt.alert(self, ground + Vector2(radius * 0.6, -radius - 8.0), clampf(alert_timer / 0.6, 0.0, 1.0))
-	if kind == ActorArt.Kind.POLICE and hp < max_hp and state == State.ACTIVE:
+	if kind == ActorArt.Kind.TANK and state == State.ACTIVE:
+		_draw_tank_status(ground)
+	elif ActorArt.is_armed(kind) and hp < max_hp and state == State.ACTIVE:
 		ActorArt.health_bar(self, ground + Vector2(0, -radius - 12.0), hp / max_hp, 1.0)
 	elif kind == ActorArt.Kind.ZOMBIE and bar_timer > 0.0 and state == State.ACTIVE:
 		ActorArt.health_bar(self, ground + Vector2(0, -radius - 12.0), hp / max_hp, clampf(bar_timer / 0.4, 0.0, 1.0))
@@ -375,3 +440,20 @@ func _draw_status(ground: Vector2) -> void:
 		var w := (n - 1) * 9.0
 		for i in n:
 			draw_circle(ground + Vector2(-w * 0.5 + i * 9.0, radius + 12.0), 3.2, Palette.with_alpha(Palette.DANGER, 0.9))
+
+
+## Barra de vida grande y marcas de "rodealo": una por cada zombi que hace falta
+## mordiéndolo a la vez; se pintan de verde a medida que se suman atacantes.
+func _draw_tank_status(ground: Vector2) -> void:
+	var w := 92.0
+	var p := ground + Vector2(-w * 0.5, -radius - 22.0)
+	draw_rect(Rect2(p - Vector2(2, 2), Vector2(w + 4, 12)), Palette.with_alpha(Palette.INK, 0.75))
+	draw_rect(Rect2(p, Vector2(w * clampf(hp / max_hp, 0.0, 1.0), 8)), Palette.DANGER)
+	var need := Balance.TANK_MIN_ATTACKERS
+	var ok := tank_attackers >= need
+	for i in need:
+		var a := -PI * 0.5 + (i - (need - 1) * 0.5) * 0.32
+		var c := ground + Vector2.RIGHT.rotated(a) * (radius + 30.0)
+		var col := Palette.ZOMBIE_SKIN if i < tank_attackers else Palette.with_alpha(Palette.WHITE, 0.55)
+		draw_circle(c, 6.0 if ok else 5.0, Palette.with_alpha(Palette.INK, 0.6))
+		draw_circle(c, 4.5 if ok else 3.6, col)

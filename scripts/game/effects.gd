@@ -87,6 +87,32 @@ func poof(pos: Vector2, col: Color) -> void:
 			0.35, randf_range(5, 8), Palette.with_alpha(col.lightened(0.2), 0.8), 14.0)
 
 
+## Explosión de cañonazo: destello, anillo naranja, chispas y humo gris.
+func explosion(pos: Vector2, radius: float) -> void:
+	_add_particle(pos, Vector2.ZERO, 0.16, radius * 0.5, Palette.with_alpha(Palette.HEADLIGHT, 0.95), radius * 3.0)
+	_rings.append([pos, 0.3, 0.3, radius * 1.1, Color("#F0A050"), 6.0])
+	for i in 14:
+		var a := randf() * TAU
+		var col := Color("#F0A050") if randf() < 0.5 else Palette.GOLD
+		_add_particle(pos, Vector2.RIGHT.rotated(a) * randf_range(120, 260), randf_range(0.25, 0.4), randf_range(3.5, 6.0), col)
+	for i in 9:
+		var a2 := randf() * TAU
+		_add_particle(pos + Vector2.RIGHT.rotated(a2) * randf_range(0, radius * 0.5), Vector2.RIGHT.rotated(a2) * randf_range(20, 50) + Vector2(0, -20),
+			randf_range(0.6, 0.9), randf_range(9, 14), Palette.with_alpha(Color("#8A8790"), 0.7), 18.0)
+
+
+## Humo que sale de un tanque destruido.
+func smoke(pos: Vector2) -> void:
+	for i in 3:
+		_add_particle(pos + Vector2(randf_range(-10, 10), randf_range(-6, 6)), Vector2(randf_range(-12, 12), randf_range(-60, -35)),
+			randf_range(0.9, 1.3), randf_range(8, 12), Palette.with_alpha(Color("#77737C"), 0.65), 16.0)
+
+
+## Fogonazo grande (escopeta y cañón).
+func blast_flash(pos: Vector2, size: float) -> void:
+	_add_particle(pos, Vector2.ZERO, 0.12, size, Palette.with_alpha(Palette.HEADLIGHT, 0.95), size * 3.0)
+
+
 ## Estrellita de impacto (GFX-077).
 func hit_star(pos: Vector2) -> void:
 	_stars.append([pos, 0.22, 0.22, Palette.GOLD, 12.0])

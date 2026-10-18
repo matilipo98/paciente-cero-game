@@ -1,9 +1,9 @@
 # PACIENTE CERO
 
 Juego arcade casual para celulares (Android / iOS), en 2D con vista cenital y vertical, hecho en **Godot 4.3+ con GDScript**.
-Arrancás con un solo zombi. Contagiás humanos para armar una horda y aguantás 10 oleadas.
+Arrancás con un solo zombi y contagiás humanos para armar una horda. Hay 5 niveles: **Ciudad** (10 oleadas), **Comisaría** (15), **Campo** (20, con soldados), **Ruinas** (25, supervivientes y motos) y **Desierto** (30, con tanques). Cada nivel arranca de cero y al ganarlo se desbloquea el siguiente.
 
-Todos los gráficos se dibujan con primitivas 2D (`_draw()`, tweens y partículas propias). Los sonidos se generan por código al iniciar. El proyecto no trae imágenes, audio, fuentes ni dependencias externas, y funciona sin internet.
+Los personajes y la ciudad se dibujan con primitivas 2D (`_draw()`, tweens y partículas propias). Los mapas de la comisaría, el campo, las ruinas y el desierto son imágenes (`assets/maps/`). Los sonidos se generan por código al iniciar. No hay dependencias externas y funciona sin internet.
 
 ---
 
@@ -40,7 +40,7 @@ En el celular, apoyás un dedo y arrastrás: el joystick aparece donde tocaste. 
 - Vida y daño: líder con 3 golpes y aliados con 2. Si cae el líder, el control pasa al aliado más cercano.
 - 6 mejoras acumulables (se elige 1 de 3 entre oleadas): Velocidad, Contagio, Resistencia, Horda, Furia e Instinto.
 - Combo con ventana de 3 s y **FIEBRE ZOMBI** a los 5 contagios seguidos: más velocidad, puntaje x2, aura y partículas intensas.
-- Victoria ("¡CIUDAD CONTAGIADA!") y derrota ("LA HUMANIDAD RESISTIÓ") con estadísticas.
+- Victoria ("¡NIVEL SUPERADO!" o "¡INVASIÓN COMPLETA!" en el último) y derrota ("LA HUMANIDAD RESISTIÓ") con estadísticas.
 - Guardado local (`user://paciente_cero.cfg`) de récord de puntos, oleada máxima, horda máxima, estadísticas, mejoras elegidas y ajustes.
 
 ### Fase 3: pulido ✔
@@ -56,6 +56,25 @@ En el celular, apoyás un dedo y arrastrás: el joystick aparece donde tocaste. 
   - Además: grillas espaciales, IA que decide cada ~0.2 s, separación cada 3 frames, sondeo de obstáculos cada 2 frames, pool de partículas y proyectiles, máximo de 3 pasos de física por frame y tope de 100 zombis simultáneos.
   - En la misma prueba de estrés (100 zombis, 25 civiles y 4 policías, render por software), el frame pasó de unos 295 ms a unos 58 ms: 5 veces más rápido.
 
+### v0.3: niveles ✔
+- 3 niveles definidos en `scripts/core/levels.gd`: Ciudad (10 oleadas), Comisaría (15) y Campo (20). Las oleadas suben de 5 en 5.
+- Cada nivel arranca de cero (1 zombi, sin mejoras). Al ganar se desbloquea el siguiente y aparece el botón **SIGUIENTE**.
+- JUGAR abre "ELEGÍ EL NIVEL", con miniatura, oleadas, enemigos, récord y candado.
+- Comisaría: más policía, que llega antes y en patrullas más grandes.
+- Campo: aparecen **soldados** desde la oleada 3. Son lentos y resistentes, tiran ráfagas de 3 desde lejos y cada bala hace 2 de daño.
+- Los mapas de imagen tienen sus obstáculos (árboles, rocas, autos, cajas, edificio) cargados a mano en `scripts/world/world_map.gd`.
+- Récord de oleada por nivel en el menú y en RÉCORDS.
+
+### v0.4: niveles 4 y 5 ✔
+- **Nivel 4, Las Ruinas** (25 oleadas): ciudad destruida con paredes, autos quemados y cajones como obstáculos.
+  - **Superviviente**: escopeta que tira un abanico de 5 perdigones de corto alcance.
+  - **Motociclista**: más rápido que la horda, da vueltas alrededor y dispara sin frenar.
+- **Nivel 5, El Desierto** (30 oleadas): campo abierto con rocas y cráteres. Soldados, supervivientes, motos y un **tanque** cada 5 oleadas (dos en la última).
+  - El tanque gira la torreta y tira cañonazos: un círculo rojo marca dónde va a caer y la explosión daña a todos los zombis del radio.
+  - Sólo recibe daño con 5 zombis o más mordiéndolo a la vez (las marcas sobre el tanque se pintan de verde) y no puede apuntar a los que tiene pegados: hay que rodearlo.
+  - Al destruirlo: +400 puntos y 6 zombis de regalo.
+- Selector de niveles compacto para los 5 mapas.
+
 ### Fuera del MVP a propósito
 La lámina muestra **botón de mordida**, **botón sprint**, **S.W.A.T.** y **barricadas por oleada**. La especificación y la planilla piden explícitamente *no* incluir botones de mordida o sprint, así que no están. S.W.A.T. y barricadas dinámicas quedan como ampliaciones naturales: se agregan como un nuevo `kind` en `Unit` y una entrada en `WAVES`. Tampoco hay música de fondo, sólo efectos.
 
@@ -67,16 +86,18 @@ La lámina muestra **botón de mordida**, **botón sprint**, **S.W.A.T.** y **ba
 project.godot            Configuración (vertical, 720×1280, autoloads, renderer Compatibility)
 export_presets.cfg       Presets Android e iOS
 scenes/main/main_menu.tscn
+assets/maps/              station.jpg, field.jpg, ruins.jpg, desert.jpg (mapas) y city_thumb.jpg (miniatura)
 scenes/game/game.tscn    Game (GameManager) → WorldMap, Units (y-sort), Effects, Projectiles,
                          WaveManager, InfectionSystem, UpgradeManager, PlayerController, UIManager
 scripts/
-  core/       balance.gd (TODOS los valores de balance), palette.gd, spatial_grid.gd
+  core/       balance.gd (balance general y oleadas del nivel 1), levels.gd (niveles 2 a 5),
+              palette.gd, spatial_grid.gd
   autoload/   save_manager.gd, audio_manager.gd, scene_transition.gd
   game/       game_manager.gd, wave_manager.gd, infection_system.gd, upgrade_manager.gd,
               player_controller.gd, projectiles.gd, effects.gd
   ai/         human_ai.gd, zombie_ai.gd, police_ai.gd
   actors/     unit.gd           (un actor reutilizable: humano → zombi sin recrear el nodo)
-  world/      world_map.gd      (dibujo de la ciudad + colisiones + puntos de aparición)
+  world/      world_map.gd      (ciudad dibujada, mapas de imagen, colisiones y puntos de aparición)
   graphics/   actor_art.gd, icon_view.gd
   ui/         ui_manager.gd, ui_kit.gd, main_menu.gd, logo_view.gd
 tests/        bot_runner (partida completa automática) y shot_runner (capturas)
@@ -84,15 +105,15 @@ docs/screenshots/  Capturas de cada pantalla
 ```
 
 ### Ajustar el balance
-Todo está en `scripts/core/balance.gd`: velocidades, radios, vida, puntajes, combo y fiebre, y la tabla `WAVES` (humanos, policías, velocidad, miedo, duración, resistencia y cadencia de la policía por oleada).
+Todo está en `scripts/core/balance.gd`: velocidades, radios, vida, puntajes, combo y fiebre, y la tabla `WAVES` del nivel 1. Las oleadas de los niveles 2 a 5 están en `scripts/core/levels.gd`: soldados (`soldiers`, `s_*`), supervivientes (`survivors`, `sv_*`), motos (`bikers`, `b_*`) y tanques (`tanks`, `t_*`). Las constantes de cada enemigo (velocidad, alcance, daño, cadencia) están en `balance.gd`.
 
 ---
 
 ## 4. Pruebas automáticas
 
 ```bash
-# Partida completa jugada por un bot (persigue humanos y elige mejoras al azar)
-godot --headless --fixed-fps 60 --path . res://tests/bot_runner.tscn
+# Partida completa jugada por un bot (persigue humanos y elige mejoras al azar). LEVEL=1..5
+LEVEL=1 godot --headless --fixed-fps 60 --path . res://tests/bot_runner.tscn
 
 # Bot quieto, para verificar la derrota
 BOT_MODE=idle godot --headless --fixed-fps 60 --path . res://tests/bot_runner.tscn

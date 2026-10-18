@@ -13,6 +13,9 @@ var sound_on := true
 var vibration_on := true
 var tutorial_done := false
 var upgrade_counts: Dictionary = {}
+## Progreso por niveles: hasta qué nivel está desbloqueado y la mejor oleada de cada uno.
+var unlocked_level := 1
+var best_wave_by_level: Dictionary = {}
 
 
 func _ready() -> void:
@@ -34,6 +37,8 @@ func load_data() -> void:
 	sound_on = bool(cf.get_value("settings", "sound_on", true))
 	vibration_on = bool(cf.get_value("settings", "vibration_on", true))
 	tutorial_done = bool(cf.get_value("settings", "tutorial_done", false))
+	unlocked_level = int(cf.get_value("progress", "unlocked_level", 1))
+	best_wave_by_level = cf.get_value("progress", "best_wave_by_level", {})
 
 
 func save_data() -> void:
@@ -48,12 +53,17 @@ func save_data() -> void:
 	cf.set_value("settings", "sound_on", sound_on)
 	cf.set_value("settings", "vibration_on", vibration_on)
 	cf.set_value("settings", "tutorial_done", tutorial_done)
+	cf.set_value("progress", "unlocked_level", unlocked_level)
+	cf.set_value("progress", "best_wave_by_level", best_wave_by_level)
 	cf.save(PATH)
 
 
 ## Registra una partida terminada. Devuelve true si hubo nuevo récord de puntaje.
-func submit_run(score: int, wave: int, infected: int, victory: bool, horde: int = 0) -> bool:
+func submit_run(score: int, wave: int, infected: int, victory: bool, horde: int = 0, level: int = 1) -> bool:
 	var record := score > best_score
+	best_wave_by_level[level] = maxi(int(best_wave_by_level.get(level, 0)), wave)
+	if victory:
+		unlocked_level = maxi(unlocked_level, level + 1)
 	best_score = maxi(best_score, score)
 	best_wave = maxi(best_wave, wave)
 	best_horde = maxi(best_horde, horde)
@@ -63,6 +73,10 @@ func submit_run(score: int, wave: int, infected: int, victory: bool, horde: int 
 		victories += 1
 	save_data()
 	return record
+
+
+func best_wave_in(level: int) -> int:
+	return int(best_wave_by_level.get(level, 0))
 
 
 func register_upgrade(id: String) -> void:
@@ -96,6 +110,8 @@ func reset_records() -> void:
 	victories = 0
 	upgrade_counts = {}
 	tutorial_done = false
+	unlocked_level = 1
+	best_wave_by_level = {}
 	save_data()
 
 
